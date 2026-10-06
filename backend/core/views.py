@@ -6,7 +6,7 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Activity, Profile
+from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
 
@@ -61,6 +61,9 @@ class GoalViewSet(Own):
 class SplitViewSet(Own):
     queryset = Split.objects.all(); serializer_class = SplitSerializer
     def after_create(self, o): log(o.user, "SPLIT", f"Split {o.title} ({o.total}) with {len(o.members) - 1} people")
+
+class BudgetViewSet(Own):
+    queryset = Budget.objects.all(); serializer_class = BudgetSerializer
 
 def _auth(u):
     t = RefreshToken.for_user(u)

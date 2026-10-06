@@ -75,3 +75,32 @@ export function Emi() {
     <div className="card" style={{ gridColumn: "1/-1", overflowX: "auto" }}><h3>Yearly breakdown</h3><table><thead><tr><th>Year</th><th>Principal paid</th><th>Interest paid</th><th>Balance</th></tr></thead>
       <tbody>{rows.map((x) => <tr key={x[0]}><td>{x[0]}</td><td>{fmt(x[1])}</td><td>{fmt(x[2])}</td><td>{fmt(x[3])}</td></tr>)}</tbody></table></div></div>);
 }
+
+const MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], CATS = "FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST OTHER".split(" ");
+const mk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+export function Trend({ items }) {
+  const data = [...Array(6)].map((_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); const m = mk(d);
+    const s = (t) => items.filter((x) => x.type === t && x.date.startsWith(m)).reduce((n, x) => n + Number(x.amount), 0); return [MS[d.getMonth()], s("INCOME"), s("EXPENSE")]; });
+  const max = Math.max(1, ...data.flatMap((x) => [x[1], x[2]]));
+  const csv = () => { const rows = [["title", "amount", "type", "category", "payment_method", "date"], ...items.map((x) => [x.title, x.amount, x.type, x.category, x.payment_method, x.date])];
+    const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n")], { type: "text/csv" })); a.download = "transactions.csv"; a.click(); };
+  return (<div className="card"><div className="row sp"><b>Last 6 months</b><div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense <button className="btn" onClick={csv}>⬇ CSV</button></div></div>
+    <div className="tr">{data.map(([m, i, e]) => <div key={m}><div className="pair"><i className="gi" style={{ height: (i / max) * 80 + 2 }} title={fmt(i)} /><i className="ri" style={{ height: (e / max) * 80 + 2 }} title={fmt(e)} /></div>{m}</div>)}</div></div>);
+}
+export function Budgets({ expenses }) {
+  const [b, setB] = useState([]), [f, setF] = useState({ category: "FOOD", limit: "" }), m = mk(new Date());
+  const load = () => api("/budgets/").then(setB); useEffect(() => { load(); }, []);
+  const spent = (c) => expenses.filter((x) => x.type === "EXPENSE" && x.category === c && x.date.startsWith(m)).reduce((n, x) => n + Number(x.amount), 0);
+  const save = async (e) => { e.preventDefault(); const ex = b.find((x) => x.category === f.category);
+    await api(ex ? `/budgets/${ex.id}/` : "/budgets/", { method: ex ? "PATCH" : "POST", body: f }); setF({ ...f, limit: "" }); load(); };
+  const tL = b.reduce((n, x) => n + Number(x.limit), 0), tS = b.reduce((n, x) => n + spent(x.category), 0);
+  return (<div><div className="stats"><div className="card stat"><span className="muted small">MONTHLY BUDGET</span><b>{fmt(tL)}</b></div><div className="card stat"><span className="muted small">SPENT</span><b>{fmt(tS)}</b></div>
+    <div className="card stat"><span className="muted small">REMAINING</span><b className={tL - tS >= 0 ? "inc" : "exp"}>{fmt(tL - tS)}</b></div></div>
+    <form className="card row wrap" onSubmit={save}><select style={{ width: 180 }} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATS.map((c) => <option key={c}>{c}</option>)}</select>
+      <input type="number" placeholder="Monthly limit" value={f.limit} onChange={(e) => setF({ ...f, limit: e.target.value })} required /><button className="btn primary">Set budget</button></form>
+    <div className="grid">{b.map((x) => { const s = spent(x.category), l = Number(x.limit), p = Math.round((s / l) * 100), col = p >= 100 ? "#ef4444" : p >= 75 ? "#f59e0b" : "#10b981";
+      return <div className="card" key={x.id}><div className="row sp"><b>{x.category}</b><button className="icon-btn" onClick={() => api(`/budgets/${x.id}/`, { method: "DELETE" }).then(load)}>🗑</button></div>
+        <div className="prog"><i style={{ width: Math.min(100, p) + "%", background: col }} /></div>
+        <div className="row sp small"><span>{fmt(s)} of {fmt(l)}</span><b style={{ color: col }}>{p >= 100 ? `Over by ${fmt(s - l)}` : `${fmt(l - s)} left`}</b></div></div>; })}</div>
+    {b.length === 0 && <p className="muted center">No budgets yet. Pick a category and set a monthly limit.</p>}</div>);
+}

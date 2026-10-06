@@ -42,3 +42,9 @@ main{padding:32px 40px;max-width:1200px}.head{display:flex;justify-content:space
 .link{cursor:pointer}.link:hover{color:var(--ac2)}.task{cursor:grab}.quick{flex:1;min-width:220px}
 .wbars{display:flex;gap:10px;align-items:flex-end;margin-top:12px}.wbars div{flex:1;text-align:center;font-size:11px;color:var(--mu);display:flex;flex-direction:column;align-items:center;gap:2px}.wbars i{width:100%;max-width:46px;background:linear-gradient(180deg,#34d399,#10b981);border-radius:6px 6px 2px 2px}.wbars em{font-style:normal;color:var(--tx);font-weight:700}
 .focus{display:flex;gap:24px;align-items:center;flex-wrap:wrap}.timer{font-size:46px;font-weight:800;font-variant-numeric:tabular-nums;margin:4px 0}.focus .prog{margin:6px 0;width:200px}
+
+.dash{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}.check.sm{width:30px;height:30px;font-size:14px}
+.badges{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:12px}.badge{text-align:center;padding:12px 6px;border-radius:14px;background:var(--in);border:1px solid var(--bd);filter:grayscale(1);opacity:.45}
+.badge.on{filter:none;opacity:1;border-color:var(--ac)}.badge span{font-size:28px;display:block}.badge small{font-size:11px;font-weight:700}
+.tr{display:flex;gap:10px;margin-top:14px}.tr>div{flex:1;text-align:center;font-size:11px;color:var(--mu)}.pair{display:flex;gap:3px;align-items:flex-end;justify-content:center;height:86px;margin-bottom:4px}.pair i{width:16px;border-radius:4px 4px 0 0}.gi{background:#10b981}.ri{background:#ef4444}
+@media(max-width:800px){.dash{grid-template-columns:1fr}}

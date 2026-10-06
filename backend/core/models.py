@@ -65,3 +65,8 @@ class Profile(models.Model):
     user = models.OneToOneField(U, on_delete=models.CASCADE)
     bio = models.CharField(max_length=200, blank=True)
     currency = models.CharField(max_length=4, default="₹")
+
+class Budget(models.Model):
+    user = models.ForeignKey(U, on_delete=models.CASCADE)
+    category = models.CharField(max_length=20)
+    limit = models.DecimalField(max_digits=12, decimal_places=2)

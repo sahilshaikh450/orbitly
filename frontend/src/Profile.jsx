@@ -18,6 +18,9 @@ export function Profile() {
       <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p></div></div>
     <div className="stats">{[["Current streak", p.current_streak + " days 🔥"], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
       <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
+    <div className="card"><b>Achievements</b><div className="badges">{[["🌱", "First step", p.total >= 1], ["🔥", "3-day streak", p.longest_streak >= 3], ["⚡", "7-day streak", p.longest_streak >= 7], ["🏆", "30-day streak", p.longest_streak >= 30],
+      ["📅", "30 active days", p.active_days >= 30], ["💯", "100 activities", p.total >= 100], ["🎯", "Goal setter", (p.kinds.GOAL || 0) >= 1], ["🤝", "Split master", (p.kinds.SPLIT || 0) >= 1]].map(([i, n, on]) =>
+      <div key={n} className={"badge " + (on ? "on" : "")}><span>{i}</span><small>{n}</small></div>)}</div></div>
     <div className="card"><div className="row sp"><b>{year} activities in the last year</b>
       <div className="row small muted">Less {[0,1,2,3,4].map((c) => <i key={c} className={"sq c" + c} />)} More</div></div>
       <div className="heatwrap"><div className="heat">{weeks.map((w, i) => <div className="wk" key={i}><span className="mo">{w[0].getDate() <= 7 ? MN[w[0].getMonth()] : ""}</span>

@@ -1,0 +1,35 @@
+import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config";
+const Q = ["Small steps every day.", "Discipline beats motivation.", "Done is better than perfect.", "You are what you repeatedly do.", "Progress, not perfection.", "Start where you are.", "Consistency compounds."];
+const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+export default function Home({ name, go }) {
+  const [d, setD] = useState(null), C = cur();
+  const load = async () => { const [h, t, e, g, p] = await Promise.all(["habits", "todos", "expenses", "goals", "profile"].map((k) => api(`/${k}/`))); setD({ h, t, e, g, p }); };
+  useEffect(() => { load(); }, []);
+  if (!d) return <p className="muted">Loading...</p>;
+  const now = new Date(), today = ymd(now), month = today.slice(0, 7), hr = now.getHours();
+  const doneH = d.h.filter((x) => x.done_today).length, due = d.t.filter((t) => t.status !== "DONE" && t.due_date && t.due_date <= today);
+  const sum = (ty) => d.e.filter((x) => x.type === ty && x.date.startsWith(month)).reduce((n, x) => n + Number(x.amount), 0);
+  const inc = sum("INCOME"), exp = sum("EXPENSE");
+  return (<div><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} 👋</h1>
+    <p className="muted">“{Q[now.getDate() % Q.length]}”</p></div></div>
+    <div className="stats">
+      <div className="card stat"><span className="muted small">HABITS TODAY</span><b>{doneH}/{d.h.length}</b><div className="prog"><i style={{ width: (d.h.length ? (doneH / d.h.length) * 100 : 0) + "%" }} /></div></div>
+      <div className="card stat"><span className="muted small">TASKS DUE</span><b>{due.length}</b></div>
+      <div className="card stat"><span className="muted small">MONTH BALANCE</span><b className={inc - exp >= 0 ? "inc" : "exp"}>{C}{Math.round(inc - exp)}</b></div>
+      <div className="card stat"><span className="muted small">CURRENT STREAK</span><b>{d.p.current_streak} 🔥</b></div></div>
+    <div className="dash">
+      <div className="card"><div className="row sp"><b>Today's habits</b><a onClick={() => go("habits")}>Open</a></div>
+        {d.h.length === 0 && <p className="muted">No habits yet.</p>}
+        {d.h.slice(0, 7).map((h) => <div className="act" key={h.id}><span>{h.icon}</span><span className={"grow " + (h.done_today ? "strike" : "")}>{h.name}</span><span className="tag fire">🔥 {h.streak}</span>
+          <button className={"check sm " + (h.done_today ? "done" : "")} onClick={() => api(`/habits/${h.id}/check/`, { method: "POST" }).then(load)}>{h.done_today ? "✓" : "○"}</button></div>)}</div>
+      <div className="card"><div className="row sp"><b>Due &amp; overdue tasks</b><a onClick={() => go("todos")}>Open</a></div>
+        {due.length === 0 && <p className="muted">Nothing due. You're all caught up 🎉</p>}
+        {due.slice(0, 7).map((t) => <div className="act" key={t.id}><input type="checkbox" onChange={() => api(`/todos/${t.id}/`, { method: "PATCH", body: { status: "DONE" } }).then(load)} />
+          <span className="grow">{t.title}</span><span className={"tag " + (t.due_date < today ? "p-URGENT" : "")}>{t.due_date}</span></div>)}</div>
+      <div className="card"><div className="row sp"><b>Savings goals</b><a onClick={() => go("expenses")}>Open</a></div>
+        {d.g.length === 0 && <p className="muted">No goals yet.</p>}
+        {d.g.slice(0, 4).map((g) => { const p = Math.min(100, Math.round((g.saved / g.target) * 100)); return <div key={g.id} style={{ marginTop: 10 }}><div className="row sp small"><span>{g.icon} {g.name}</span><b>{p}%</b></div><div className="prog"><i style={{ width: p + "%" }} /></div></div>; })}</div>
+      <div className="card"><b>This month</b><div className="act"><span className="grow">Income</span><b className="inc">+{C}{Math.round(inc)}</b></div>
+        <div className="act"><span className="grow">Expenses</span><b className="exp">−{C}{Math.round(exp)}</b></div>
+        <div className="act"><span className="grow">Activities logged (all time)</span><b>{d.p.total}</b></div></div></div></div>);
+}

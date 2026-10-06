@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
-const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["emi", "EMI Calculator"]];
+const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
@@ -30,6 +30,7 @@ export default function Module({ kind }) {
     {kind === "expenses" && sub === "goals" && <Goals expenses={items} />}
     {kind === "expenses" && sub === "split" && <Splits />}
     {kind === "expenses" && sub === "emi" && <Emi />}
+    {kind === "expenses" && sub === "budget" && <Budgets expenses={items} />}
     {main && <>
     <div className="stats">{cfg.stats(items).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
     <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
@@ -41,7 +42,7 @@ export default function Module({ kind }) {
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={() => check(h.id)}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
-      {cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
+      <Trend items={items} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
       <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
         <span className="tag">{x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{x.amount}</b>{delBtn(x.id)}</div>)}</div></>}
     {kind === "todos" && <><Focus tasks={items} onDone={load} />
