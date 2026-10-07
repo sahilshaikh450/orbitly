@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel, level } from "./Extras";
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lvl = (n) => (n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
 const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -7,7 +7,7 @@ export function Profile() {
   const [p, setP] = useState(null); const [day, setDay] = useState(null);
   useEffect(() => { api("/profile/").then(setP); }, []);
   if (!p) return <Skel />;
-  const end = new Date(), start = new Date(end); start.setDate(start.getDate() - 364); start.setDate(start.getDate() - start.getDay());
+  const lv = level(p.total); const end = new Date(), start = new Date(end); start.setDate(start.getDate() - 364); start.setDate(start.getDate() - start.getDay());
   const weeks = []; let d = new Date(start), w = [];
   while (d <= end) { w.push(new Date(d)); if (w.length === 7) { weeks.push(w); w = []; } d.setDate(d.getDate() + 1); } if (w.length) weeks.push(w);
   const year = Object.values(p.by_day).reduce((a, b) => a + b, 0);
@@ -15,7 +15,7 @@ export function Profile() {
   const groups = list.reduce((m, i) => ((m[i.date] = m[i.date] || []).push(i), m), {});
   return (<div>
     <div className="card prof"><div className="avatar">{(p.name || p.email)[0].toUpperCase()}</div>
-      <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p></div></div>
+      <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p><div className="lvl"><b>Level {lv.l} · {lv.name}</b><span className="muted small"> {lv.left} activities to level {lv.l + 1}</span></div><div className="xp wide"><i style={{ width: lv.pct + "%" }} /></div></div></div>
     <div className="stats">{[["Current streak", p.current_streak + " days 🔥"], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
       <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="card"><b>Achievements</b><div className="badges">{[["🌱", "First step", p.total >= 1], ["🔥", "3-day streak", p.longest_streak >= 3], ["⚡", "7-day streak", p.longest_streak >= 7], ["🏆", "30-day streak", p.longest_streak >= 30],
@@ -32,7 +32,7 @@ export function Profile() {
       {Object.entries(groups).map(([dt, a]) => <div key={dt}><div className="day">{dt}</div>
         {a.map((i) => <div className="act" key={i.id}><span>{ICON[i.kind]}</span><span className="grow">{i.text}</span><span className="muted small">{i.time}</span></div>)}</div>)}</div></div>);
 }
-export function Settings({ theme, setTheme, onName, logout }) {
+export function Settings({ theme, setTheme, accent, setAccent, onName, logout }) {
   const [f, setF] = useState(null); const [msg, setMsg] = useState(""); const [r, setRs] = useState(getR()); const [pw, setPw] = useState({ old_password: "", new_password: "" });
   useEffect(() => { api("/profile/").then((p) => setF({ name: p.name, bio: p.bio, currency: p.currency, email: p.email })); }, []);
   if (!f) return <p className="muted">Loading...</p>;
@@ -50,7 +50,7 @@ export function Settings({ theme, setTheme, onName, logout }) {
       <label>Bio<input value={f.bio} onChange={(e) => setF({ ...f, bio: e.target.value })} placeholder="Tell us about yourself" /></label>
       <label>Currency<select value={f.currency} onChange={(e) => setF({ ...f, currency: e.target.value })}>{["₹", "$", "€", "£", "¥", "AED"].map((c) => <option key={c}>{c}</option>)}</select></label>
       <button className="btn primary">Save changes</button></form>
-    <div className="card"><h3>Appearance</h3><div className="row sp"><span>{theme === "dark" ? "Dark mode" : "Light mode"}</span>
+    <div className="card"><h3>Appearance</h3><div className="row wrap" style={{ marginBottom: 14 }}><span className="muted small">Accent color</span>{["emerald", "violet", "blue", "rose", "amber"].map((a) => <button type="button" key={a} className={"swatch s-" + a + (accent === a ? " on" : "")} onClick={() => setAccent(a)} aria-label={a} />)}</div><div className="row sp"><span>{theme === "dark" ? "Dark mode" : "Light mode"}</span>
       <button className={"switch " + (theme === "light" ? "on" : "")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><i /></button></div></div>
     <div className="card"><h3>Reminders &amp; app</h3>
       <div className="row sp"><span>Daily reminders</span><button className={"switch " + (r.on ? "on" : "")} onClick={toggleR}><i /></button></div>
