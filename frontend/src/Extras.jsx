@@ -48,3 +48,18 @@ export function TaskList({ items, view, patch, del, openEdit }) {
     {t.due_date && <span className={"tag " + (t.status !== "DONE" && t.due_date < now ? "p-URGENT" : "")}>📅 {t.due_date}</span>}
     <span className={"tag p-" + t.priority}>{t.priority}</span><button className="icon-btn" onClick={() => del(t.id)}>🗑</button></div>)}</div>);
 }
+
+export function CalendarView({ items, openEdit, create }) {
+  const [cur, setCur] = useState(() => { const d = new Date(); d.setDate(1); return d; }), [sel, setSel] = useState(ymd(new Date())), [txt, setTxt] = useState("");
+  const y = cur.getFullYear(), m = cur.getMonth(), first = new Date(y, m, 1).getDay(), dim = new Date(y, m + 1, 0).getDate(), today = ymd(new Date());
+  const cells = [...Array(first).fill(null), ...[...Array(dim)].map((_, i) => ymd(new Date(y, m, i + 1)))], on = (k) => items.filter((t) => t.due_date === k);
+  return (<div><div className="row sp" style={{ marginTop: 12 }}><button className="btn" onClick={() => setCur(new Date(y, m - 1, 1))}>‹</button><b>{MN[m]} {y}</b><button className="btn" onClick={() => setCur(new Date(y, m + 1, 1))}>›</button></div>
+    <div className="cal">{DN.map((d) => <div className="cal-h" key={d}>{d}</div>)}
+      {cells.map((k, i) => k ? <div key={k} className={"cal-c " + (k === today ? "today " : "") + (k === sel ? "sel" : "")} onClick={() => setSel(k)}><span>{+k.slice(8)}</span>
+        {on(k).slice(0, 2).map((t) => <i key={t.id} className={"p-" + t.priority + (t.status === "DONE" ? " done" : "")}>{t.title}</i>)}{on(k).length > 2 && <small>+{on(k).length - 2} more</small>}</div> : <div key={"e" + i} />)}</div>
+    <div className="card"><b>Tasks on {sel}</b>
+      {on(sel).length === 0 && <p className="muted small">No tasks on this day.</p>}
+      {on(sel).map((t) => <div className="act" key={t.id}><span className={"grow link " + (t.status === "DONE" ? "strike" : "")} onClick={() => openEdit(t)}>{t.title}</span><span className={"tag p-" + t.priority}>{t.priority}</span><span className="tag">{t.status}</span></div>)}
+      <input placeholder="+ Add a task for this day and press Enter" value={txt} onChange={(e) => setTxt(e.target.value)}
+        onKeyDown={(e) => { if (e.key === "Enter" && txt.trim()) { create({ title: txt.trim(), due_date: sel, priority: "MEDIUM", status: "TODO" }); setTxt(""); } }} /></div></div>);
+}

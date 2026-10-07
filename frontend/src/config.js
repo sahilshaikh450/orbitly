@@ -20,7 +20,7 @@ export const CFG = {
   todos: { title: "Task Engine", icon: "✅", sub: "Plan it. Move it. Finish it.", noun: "Task",
     fields: [["title","Title","text",""],["description","Description","text",""],
       ["priority","Priority","select","MEDIUM",opts("LOW MEDIUM HIGH URGENT")],["status","Status","select","TODO",opts("TODO IN_PROGRESS DONE")],
-      ["due_date","Due date","date",""],["tags","Tags","text",""]],
+      ["due_date","Due date","date",""],["repeat","Repeat","select","NONE",opts("NONE DAILY WEEKLY MONTHLY")],["tags","Tags","text",""]],
     filter: ["priority", opts("LOW MEDIUM HIGH URGENT")],
     stats: (a) => { const d=a.filter(x=>x.status==="DONE").length;
       return [["Total",a.length],["Done",d],["Overdue",a.filter(x=>x.status!=="DONE"&&x.due_date&&x.due_date<today()).length],
