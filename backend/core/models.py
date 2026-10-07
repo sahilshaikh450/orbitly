@@ -66,6 +66,7 @@ class Profile(models.Model):
     user = models.OneToOneField(U, on_delete=models.CASCADE)
     bio = models.CharField(max_length=200, blank=True)
     currency = models.CharField(max_length=4, default="₹")
+    verified = models.BooleanField(default=False)
 
 class Budget(models.Model):
     user = models.ForeignKey(U, on_delete=models.CASCADE)

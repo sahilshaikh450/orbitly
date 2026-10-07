@@ -2,7 +2,28 @@ from datetime import date, timedelta
 from rest_framework import serializers
 from .models import Habit, Expense, Todo, Goal, Split, Budget, Recurring
 
-class HabitSerializer(serializers.ModelSerializer):
+S = lambda s: set(s.split())
+EXP_CATS = S("FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST SALARY OTHER")
+
+class Checked:
+    CHOICES = {}; POSITIVE = ()
+    def validate(self, a):
+        for f, ok in self.CHOICES.items():
+            if f in a and a[f] not in ok: raise serializers.ValidationError({f: f"Must be one of: {', '.join(sorted(ok))}"})
+        for f in self.POSITIVE:
+            if f in a and a[f] <= 0: raise serializers.ValidationError({f: "Must be greater than 0"})
+        return super().validate(a)
+
+class Base(Checked, serializers.ModelSerializer):
+    class Meta: fields = "__all__"; read_only_fields = ["user"]
+
+def make(model, choices=None, positive=()):
+    class M(Base.Meta): pass
+    M.model = model
+    return type(model.__name__ + "Serializer", (Base,), {"Meta": M, "CHOICES": choices or {}, "POSITIVE": positive})
+
+class HabitSerializer(Checked, serializers.ModelSerializer):
+    CHOICES = {"frequency": S("DAILY WEEKLY MONTHLY"), "category": S("HEALTH FITNESS MINDFULNESS LEARNING PRODUCTIVITY SOCIAL FINANCE CREATIVITY OTHER")}
     streak = serializers.SerializerMethodField()
     done_today = serializers.SerializerMethodField()
     week = serializers.SerializerMethodField()
@@ -33,10 +54,25 @@ class HabitSerializer(serializers.ModelSerializer):
         while d in days: n += 1; d -= timedelta(days=1)
         return n
 
-def make(model):
-    class S(serializers.ModelSerializer):
-        class Meta:
-            fields = "__all__"; read_only_fields = ["user"]
-    S.Meta.model = model
-    return S
-ExpenseSerializer, TodoSerializer, GoalSerializer, SplitSerializer, BudgetSerializer, RecurringSerializer = make(Expense), make(Todo), make(Goal), make(Split), make(Budget), make(Recurring)
+class TodoSerializer(Checked, serializers.ModelSerializer):
+    CHOICES = {"priority": S("LOW MEDIUM HIGH URGENT"), "status": S("TODO IN_PROGRESS DONE"), "repeat": S("NONE DAILY WEEKLY MONTHLY")}
+    class Meta:
+        model = Todo; fields = "__all__"; read_only_fields = ["user", "focus_minutes"]
+    def validate_subtasks(self, v):
+        if not isinstance(v, list) or len(v) > 50: raise serializers.ValidationError("Up to 50 subtasks are allowed")
+        return [{"t": str(x.get("t", "")).strip()[:200], "done": bool(x.get("done"))} for x in v if isinstance(x, dict) and str(x.get("t", "")).strip()]
+
+class SplitSerializer(Checked, serializers.ModelSerializer):
+    POSITIVE = ("total",)
+    class Meta:
+        model = Split; fields = "__all__"; read_only_fields = ["user"]
+    def validate_members(self, v):
+        if not isinstance(v, list) or not 2 <= len(v) <= 20: raise serializers.ValidationError("A split needs 2 to 20 people")
+        out = [{"name": str(m.get("name", "")).strip()[:40], "settled": bool(m.get("settled"))} for m in v if isinstance(m, dict)]
+        if len(out) != len(v) or any(not m["name"] for m in out): raise serializers.ValidationError("Every person needs a name")
+        return out
+
+ExpenseSerializer = make(Expense, {"type": S("EXPENSE INCOME"), "category": EXP_CATS, "payment_method": S("UPI CARD CASH BANK")}, ("amount",))
+GoalSerializer = make(Goal, {"kind": S("SAVING EMERGENCY")}, ("target",))
+BudgetSerializer = make(Budget, {"category": EXP_CATS}, ("limit",))
+RecurringSerializer = make(Recurring, {"type": S("EXPENSE INCOME"), "category": EXP_CATS, "payment_method": S("UPI CARD CASH BANK"), "frequency": S("WEEKLY MONTHLY YEARLY")}, ("amount",))

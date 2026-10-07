@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders";
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lvl = (n) => (n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
 const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -33,12 +33,14 @@ export function Profile() {
         {a.map((i) => <div className="act" key={i.id}><span>{ICON[i.kind]}</span><span className="grow">{i.text}</span><span className="muted small">{i.time}</span></div>)}</div>)}</div></div>);
 }
 export function Settings({ theme, setTheme, onName, logout }) {
-  const [f, setF] = useState(null); const [msg, setMsg] = useState(""); const [pw, setPw] = useState({ old_password: "", new_password: "" });
+  const [f, setF] = useState(null); const [msg, setMsg] = useState(""); const [r, setRs] = useState(getR()); const [pw, setPw] = useState({ old_password: "", new_password: "" });
   useEffect(() => { api("/profile/").then((p) => setF({ name: p.name, bio: p.bio, currency: p.currency, email: p.email })); }, []);
   if (!f) return <p className="muted">Loading...</p>;
   const save = async (e) => { e.preventDefault(); await api("/profile/", { method: "PATCH", body: { name: f.name, bio: f.bio, currency: f.currency } });
     localStorage.setItem("cur", f.currency); localStorage.setItem("name", f.name); onName(f.name || f.email); setMsg("Saved ✓"); };
-  const changePw = async (e) => { e.preventDefault(); try { await api("/auth/password/", { method: "POST", body: pw }); setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
+  const upd = (n) => { setR(n); setRs(n); };
+  const toggleR = async () => { if (!r.on && "Notification" in window && Notification.permission !== "granted") { if ((await Notification.requestPermission()) !== "granted") { setMsg("Notifications are blocked in your browser settings."); return; } } upd({ ...r, on: !r.on }); };
+  const changePw = async (e) => { e.preventDefault(); try { const res = await api("/auth/password/", { method: "POST", body: pw }); if (res.access) { localStorage.setItem("token", res.access); localStorage.setItem("refresh", res.refresh); } setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
   const exportData = async () => { const all = {}; for (const k of ["habits", "expenses", "todos", "goals", "splits"]) all[k] = await api(`/${k}/`);
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(all, null, 2)], { type: "application/json" })); a.download = "lifeos-export.json"; a.click(); };
   return (<div className="settings"><h1>⚙️ Settings</h1>{msg && <div className="ok">{msg}</div>}
@@ -50,9 +52,16 @@ export function Settings({ theme, setTheme, onName, logout }) {
       <button className="btn primary">Save changes</button></form>
     <div className="card"><h3>Appearance</h3><div className="row sp"><span>{theme === "dark" ? "Dark mode" : "Light mode"}</span>
       <button className={"switch " + (theme === "light" ? "on" : "")} onClick={() => setTheme(theme === "dark" ? "light" : "dark")}><i /></button></div></div>
+    <div className="card"><h3>Reminders &amp; app</h3>
+      <div className="row sp"><span>Daily reminders</span><button className={"switch " + (r.on ? "on" : "")} onClick={toggleR}><i /></button></div>
+      {r.on && <div className="row wrap"><label style={{ flex: 1 }}>Habit reminder<input type="time" value={r.habit} onChange={(e) => upd({ ...r, habit: e.target.value })} /></label>
+        <label style={{ flex: 1 }}>Task reminder<input type="time" value={r.task} onChange={(e) => upd({ ...r, task: e.target.value })} /></label></div>}
+      <div className="row wrap"><button type="button" className="btn" onClick={() => notify("Orbitly", "Notifications are working 🎉")}>Send test notification</button>
+        {window.__bip && <button type="button" className="btn primary" onClick={() => window.__bip.prompt()}>Install app</button>}</div>
+      <p className="muted small">Reminders fire while Orbitly is open in a browser tab or as an installed app.</p></div>
     <form className="card" onSubmit={changePw}><h3>Change password</h3>
       <input type="password" placeholder="Current password" value={pw.old_password} onChange={(e) => setPw({ ...pw, old_password: e.target.value })} required />
-      <input type="password" placeholder="New password (min 6)" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} required />
+      <input type="password" placeholder="New password (min 8)" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} required />
       <button className="btn">Update password</button></form>
     <div className="card"><h3>Data &amp; account</h3><div className="row"><button className="btn" onClick={exportData}>⬇ Export my data</button><button className="btn red" onClick={logout}>Log out</button></div></div></div>);
 }
