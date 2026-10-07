@@ -83,3 +83,11 @@ class Recurring(models.Model):
     frequency = models.CharField(max_length=10, default="MONTHLY")
     next_date = models.DateField(default=datetime.date.today)
     active = models.BooleanField(default=True)
+
+class Journal(models.Model):
+    user = models.ForeignKey(U, on_delete=models.CASCADE)
+    date = models.DateField(default=datetime.date.today)
+    mood = models.SmallIntegerField(default=3)
+    text = models.TextField(blank=True)
+    tags = models.CharField(max_length=120, blank=True)
+    class Meta: unique_together = ("user", "date")

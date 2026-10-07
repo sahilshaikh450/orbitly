@@ -78,13 +78,32 @@ export function Emi() {
 
 const MS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"], CATS = "FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST OTHER".split(" ");
 const mk = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-export function Trend({ items }) {
+const DC = "FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST SALARY OTHER".split(" ");
+const parseCSV = (t) => { const rows = []; let r = [], c = "", q = false;
+  for (let i = 0; i < t.length; i++) { const ch = t[i];
+    if (q) { if (ch === '"' && t[i + 1] === '"') { c += '"'; i++; } else if (ch === '"') q = false; else c += ch; }
+    else if (ch === '"') q = true; else if (ch === ",") { r.push(c); c = ""; }
+    else if (ch === "\n" || ch === "\r") { if (ch === "\r" && t[i + 1] === "\n") i++; r.push(c); rows.push(r); r = []; c = ""; } else c += ch; }
+  if (c || r.length) { r.push(c); rows.push(r); } return rows.filter((x) => x.some((y) => y.trim())); };
+const normCSV = (rows) => { const h = rows[0].map((x) => x.trim().toLowerCase().replace(/ /g, "_")), ix = (...n) => h.findIndex((x) => n.includes(x)), p2 = (n) => String(n).padStart(2, "0");
+  const ti = ix("title", "description", "name", "narration", "details"), ai = ix("amount", "value"), di = ix("date", "txn_date", "transaction_date"), tyi = ix("type"), ci = ix("category"), pi = ix("payment_method", "payment", "method");
+  if (ti < 0 || ai < 0 || di < 0) throw new Error("The CSV needs title, amount and date columns");
+  return rows.slice(1).map((r, n) => { const amt = parseFloat(String(r[ai] || "").replace(/[^0-9.\-]/g, "")); if (!isFinite(amt) || amt === 0) throw new Error(`Row ${n + 2}: invalid amount`);
+    let dt = String(r[di] || "").trim(), m = dt.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+    if (m) dt = `${m[1]}-${p2(m[2])}-${p2(m[3])}`; else { m = dt.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/); if (!m) throw new Error(`Row ${n + 2}: unrecognised date "${dt}"`); dt = `${m[3]}-${p2(m[2])}-${p2(m[1])}`; }
+    const ty = (tyi >= 0 && r[tyi] || "").trim().toUpperCase(), cat = (ci >= 0 && r[ci] || "").trim().toUpperCase(), pm = (pi >= 0 && r[pi] || "").trim().toUpperCase();
+    return { title: String(r[ti] || "").trim().slice(0, 120) || "Imported", amount: Math.abs(amt).toFixed(2), type: ty === "INCOME" ? "INCOME" : "EXPENSE", category: DC.includes(cat) ? cat : "OTHER", payment_method: ["UPI", "CARD", "CASH", "BANK"].includes(pm) ? pm : "UPI", date: dt }; }); };
+export function Trend({ items, reload }) {
+  const imp = async (e) => { const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+    try { if (f.size > 1e6) throw new Error("File is too large (max 1 MB)"); const rows = normCSV(parseCSV(await f.text())); if (!rows.length) throw new Error("No rows found");
+      if (rows.length > 500) throw new Error("Import up to 500 rows at a time"); if (!confirm(`Import ${rows.length} transactions?`)) return;
+      await api("/expenses/bulk/", { method: "POST", body: rows }); reload(); } catch (x) { alert(x.message); } };
   const data = [...Array(6)].map((_, i) => { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - (5 - i)); const m = mk(d);
     const s = (t) => items.filter((x) => x.type === t && x.date.startsWith(m)).reduce((n, x) => n + Number(x.amount), 0); return [MS[d.getMonth()], s("INCOME"), s("EXPENSE")]; });
   const max = Math.max(1, ...data.flatMap((x) => [x[1], x[2]]));
-  const csv = () => { const rows = [["title", "amount", "type", "category", "payment_method", "date"], ...items.map((x) => [x.title, x.amount, x.type, x.category, x.payment_method, x.date])];
+  const csv = () => { const rows = [["title", "amount", "type", "category", "payment_method", "date"], ...items.map((x) => [/^[=+\-@]/.test(x.title) ? "'" + x.title : x.title, x.amount, x.type, x.category, x.payment_method, x.date])];
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n")], { type: "text/csv" })); a.download = "transactions.csv"; a.click(); };
-  return (<div className="card"><div className="row sp"><b>Last 6 months</b><div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense <button className="btn" onClick={csv}>⬇ CSV</button></div></div>
+  return (<div className="card"><div className="row sp"><b>Last 6 months</b><div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense <button className="btn" onClick={csv}>⬇ CSV</button><label className="btn" style={{ cursor: "pointer" }}>⬆ Import<input type="file" accept=".csv,text/csv" hidden onChange={imp} /></label></div></div>
     <div className="tr">{data.map(([m, i, e]) => <div key={m}><div className="pair"><i className="gi" style={{ height: (i / max) * 80 + 2 }} title={fmt(i)} /><i className="ri" style={{ height: (e / max) * 80 + 2 }} title={fmt(e)} /></div>{m}</div>)}</div></div>);
 }
 export function Budgets({ expenses }) {

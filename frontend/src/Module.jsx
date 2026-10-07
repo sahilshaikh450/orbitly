@@ -49,7 +49,7 @@ export default function Module({ kind }) {
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
-      <Trend items={items} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
+      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
       <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
         <span className="tag">{x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{x.amount}</b>{delBtn(x.id)}</div>)}</div></>}
     {kind === "todos" && <><Focus tasks={items} onDone={load} />

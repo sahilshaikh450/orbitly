@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"; import { api } from "./api";
-const NAV = [["home", "🏠 Go to Dashboard"], ["habits", "💪 Go to Habit Forge"], ["expenses", "💰 Go to Wealth Map"], ["todos", "✅ Go to Task Engine"], ["profile", "👤 Go to Profile"], ["settings", "⚙️ Go to Settings"]];
+const NAV = [["home", "🏠 Go to Dashboard"], ["habits", "💪 Go to Habit Forge"], ["expenses", "💰 Go to Wealth Map"], ["todos", "✅ Go to Task Engine"], ["profile", "👤 Go to Profile"], ["journal", "📓 Go to Journal"], ["analytics", "📊 Go to Analytics"], ["settings", "⚙️ Go to Settings"]];
 const td = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 export default function Palette({ onClose, onDone, toggleTheme, logout }) {
   const [q, setQ] = useState(""), [i, setI] = useState(0), ref = useRef(); useEffect(() => { ref.current.focus(); }, []);

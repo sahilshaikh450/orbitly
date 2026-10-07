@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Activity, Profile
+from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Journal, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
 
@@ -66,6 +66,16 @@ class HabitViewSet(Own):
 class ExpenseViewSet(Own):
     queryset = Expense.objects.all(); serializer_class = ExpenseSerializer
     def after_create(self, o): log(o.user, "MONEY", f"{'Earned' if o.type == 'INCOME' else 'Spent'} {o.amount} - {o.title}")
+    @action(detail=False, methods=["post"])
+    def bulk(self, request):
+        rows = request.data
+        if not isinstance(rows, list) or not 0 < len(rows) <= 500: return Response({"error": "Send between 1 and 500 rows"}, status=400)
+        s = self.get_serializer(data=rows, many=True)
+        if not s.is_valid():
+            i = next(n for n, e in enumerate(s.errors) if e)
+            return Response({"error": f"Row {i + 2}: " + "; ".join(f"{k}: {' '.join(map(str, v))}" for k, v in s.errors[i].items())}, status=400)
+        s.save(user=request.user); log(request.user, "MONEY", f"Imported {len(rows)} transactions")
+        return Response({"created": len(rows)}, status=201)
 
 class TodoViewSet(Own):
     queryset = Todo.objects.all(); serializer_class = TodoSerializer
@@ -118,6 +128,16 @@ def run_recurring(request):
             r.next_date = advance(r.next_date, r.frequency); c += 1; n += 1
         r.save()
     return Response({"created": n})
+
+class JournalViewSet(Own):
+    queryset = Journal.objects.all(); serializer_class = JournalSerializer
+    def get_queryset(self): return super().get_queryset().order_by("-date")
+    def create(self, request, *a, **k):
+        s = self.get_serializer(data=request.data); s.is_valid(raise_exception=True)
+        d = dict(s.validated_data); day = d.pop("date", date.today())
+        obj, created = Journal.objects.update_or_create(user=request.user, date=day, defaults=d)
+        if created: log(request.user, "JOURNAL", "Wrote a journal entry")
+        return Response(self.get_serializer(obj).data, status=201 if created else 200)
 
 class BudgetViewSet(Own):
     queryset = Budget.objects.all(); serializer_class = BudgetSerializer
