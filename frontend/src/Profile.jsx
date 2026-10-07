@@ -40,7 +40,7 @@ export function Settings({ theme, setTheme, onName, logout }) {
     localStorage.setItem("cur", f.currency); localStorage.setItem("name", f.name); onName(f.name || f.email); setMsg("Saved ✓"); };
   const upd = (n) => { setR(n); setRs(n); };
   const toggleR = async () => { if (!r.on && "Notification" in window && Notification.permission !== "granted") { if ((await Notification.requestPermission()) !== "granted") { setMsg("Notifications are blocked in your browser settings."); return; } } upd({ ...r, on: !r.on }); };
-  const changePw = async (e) => { e.preventDefault(); try { await api("/auth/password/", { method: "POST", body: pw }); setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
+  const changePw = async (e) => { e.preventDefault(); try { const res = await api("/auth/password/", { method: "POST", body: pw }); if (res.access) { localStorage.setItem("token", res.access); localStorage.setItem("refresh", res.refresh); } setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
   const exportData = async () => { const all = {}; for (const k of ["habits", "expenses", "todos", "goals", "splits"]) all[k] = await api(`/${k}/`);
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(all, null, 2)], { type: "application/json" })); a.download = "lifeos-export.json"; a.click(); };
   return (<div className="settings"><h1>⚙️ Settings</h1>{msg && <div className="ok">{msg}</div>}
@@ -61,7 +61,7 @@ export function Settings({ theme, setTheme, onName, logout }) {
       <p className="muted small">Reminders fire while Orbitly is open in a browser tab or as an installed app.</p></div>
     <form className="card" onSubmit={changePw}><h3>Change password</h3>
       <input type="password" placeholder="Current password" value={pw.old_password} onChange={(e) => setPw({ ...pw, old_password: e.target.value })} required />
-      <input type="password" placeholder="New password (min 6)" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} required />
+      <input type="password" placeholder="New password (min 8)" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} required />
       <button className="btn">Update password</button></form>
     <div className="card"><h3>Data &amp; account</h3><div className="row"><button className="btn" onClick={exportData}>⬇ Export my data</button><button className="btn red" onClick={logout}>Log out</button></div></div></div>);
 }

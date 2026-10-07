@@ -4,7 +4,7 @@ const logout = () => { ["token", "refresh", "name"].forEach((k) => localStorage.
 async function refresh() {
   const r = localStorage.getItem("refresh"); if (!r) return false;
   const res = await fetch(BASE + "/auth/refresh/", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ refresh: r }) });
-  if (!res.ok) return false; localStorage.setItem("token", (await res.json()).access); return true;
+  if (!res.ok) return false; const d = await res.json(); localStorage.setItem("token", d.access); if (d.refresh) localStorage.setItem("refresh", d.refresh); return true;
 }
 export async function api(path, opts = {}, retry = true) {
   const { method = "GET", body } = opts, token = localStorage.getItem("token");

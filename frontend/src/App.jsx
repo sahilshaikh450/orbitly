@@ -4,7 +4,7 @@ export default function App() {
   const [tab, setTab] = useState("home"); const [menu, setMenu] = useState(false), [pal, setPal] = useState(false), [rev, setRev] = useState(0), [open, setOpen] = useState(false), [notice, setNotice] = useState("");
   const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark");
   useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("theme", theme); }, [theme]);
-  const logout = () => { ["token", "refresh", "name"].forEach((k) => localStorage.removeItem(k)); setMenu(false); setName(null); };
+  const logout = () => { const rt = localStorage.getItem("refresh"); if (rt) api("/auth/logout/", { method: "POST", body: { refresh: rt } }).catch(() => {}); ["token", "refresh", "name"].forEach((k) => localStorage.removeItem(k)); setMenu(false); setName(null); };
   useEffect(() => { const k = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPal((p) => !p); } }; window.addEventListener("keydown", k); return () => window.removeEventListener("keydown", k); }, []);
   useEffect(() => { const t = new URLSearchParams(location.search).get("verify");
     if (t) { api("/auth/verify/", { method: "POST", body: { token: t } }).then(() => setNotice("Email verified ✓")).catch((e) => setNotice(e.message)); history.replaceState({}, "", location.pathname); } }, []);

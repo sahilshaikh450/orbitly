@@ -2,17 +2,29 @@ import calendar
 from django.conf import settings as dj
 from django.core import signing
 from django.core.mail import send_mail
+from django.core.cache import cache
+from django.core.exceptions import ValidationError as DjangoValidationError
+from django.core.validators import validate_email
+from django.contrib.auth.password_validation import validate_password
 from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework import viewsets
-from rest_framework.decorators import action, api_view, permission_classes
+from rest_framework.decorators import action, api_view, permission_classes, throttle_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
+from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
+
+class AuthAnon(AnonRateThrottle): scope = "auth"
+class AuthUser(UserRateThrottle): scope = "auth"
+
+def revoke_all(u):
+    for t in OutstandingToken.objects.filter(user=u): BlacklistedToken.objects.get_or_create(token=t)
 
 def _mail(to, subject, body): send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
 def _link(k, t): return f"{dj.FRONTEND_URL}/?{k}={t}"
@@ -57,7 +69,10 @@ class TodoViewSet(Own):
     def after_create(self, o): log(o.user, "TASK", f"Added task {o.title}")
     @action(detail=True, methods=["post"])
     def focus(self, request, pk=None):
-        t = self.get_object(); m = int(request.data.get("minutes", 25))
+        t = self.get_object()
+        try: m = int(request.data.get("minutes", 25))
+        except (TypeError, ValueError): return Response({"error": "Invalid minutes"}, status=400)
+        if not 1 <= m <= 240: return Response({"error": "Minutes must be between 1 and 240"}, status=400)
         t.focus_minutes += m; t.save(); log(request.user, "TASK", f"Focused {m} min on {t.title}")
         return Response(self.get_serializer(t).data)
     def perform_update(self, s):
@@ -75,7 +90,10 @@ class GoalViewSet(Own):
     def after_create(self, o): log(o.user, "GOAL", f"Started goal {o.name}")
     @action(detail=True, methods=["post"])
     def add(self, request, pk=None):
-        g = self.get_object(); a = Decimal(str(request.data.get("amount", 0)))
+        g = self.get_object()
+        try: a = Decimal(str(request.data.get("amount", 0)))
+        except Exception: return Response({"error": "Invalid amount"}, status=400)
+        if not a.is_finite() or abs(a) > 10**9: return Response({"error": "Invalid amount"}, status=400)
         g.saved = max(Decimal(0), g.saved + a); g.save()
         log(request.user, "GOAL", f"{'Added' if a >= 0 else 'Withdrew'} {abs(a)} {'to' if a >= 0 else 'from'} {g.name}")
         return Response(self.get_serializer(g).data)
@@ -107,10 +125,12 @@ def _auth(u):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
 def register(request):
     d = request.data; email = (d.get("email") or "").lower().strip()
-    if not email or len(d.get("password", "")) < 6:
-        return Response({"error": "Enter a valid email and a password with 6+ characters"}, status=400)
+    try: validate_email(email); validate_password(d.get("password", ""))
+    except DjangoValidationError as e: return Response({"error": " ".join(e.messages)}, status=400)
+    if len(d.get("name", "")) > 60: return Response({"error": "Name is too long"}, status=400)
     User = get_user_model()
     if User.objects.filter(username=email).exists():
         return Response({"error": "This email is already registered"}, status=400)
@@ -120,16 +140,22 @@ def register(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
 def login(request):
-    u = authenticate(username=(request.data.get("email") or "").lower().strip(), password=request.data.get("password"))
-    return _auth(u) if u else Response({"error": "Incorrect email or password"}, status=401)
+    email = (request.data.get("email") or "").lower().strip()[:254]; key = f"loginfail:{email}"
+    if cache.get(key, 0) >= 5: return Response({"error": "Too many failed attempts. Try again in 15 minutes."}, status=429)
+    u = authenticate(username=email, password=request.data.get("password"))
+    if not u: cache.set(key, cache.get(key, 0) + 1, 900); return Response({"error": "Incorrect email or password"}, status=401)
+    cache.delete(key); return _auth(u)
 
 @api_view(["POST"])
+@throttle_classes([AuthUser])
 def password(request):
     u = request.user; d = request.data
     if not u.check_password(d.get("old_password", "")): return Response({"error": "Current password is incorrect"}, status=400)
-    if len(d.get("new_password", "")) < 6: return Response({"error": "New password must be 6+ characters"}, status=400)
-    u.set_password(d["new_password"]); u.save(); return Response({"ok": True})
+    try: validate_password(d.get("new_password", ""), u)
+    except DjangoValidationError as e: return Response({"error": " ".join(e.messages)}, status=400)
+    u.set_password(d["new_password"]); u.save(); revoke_all(u); return _auth(u)
 
 def streaks(days):
     ds = set(days); best = cur = 0; prev = None
@@ -163,6 +189,7 @@ BAD = Response({"error": "This link is invalid or expired"}, status=400)
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
 def forgot(request):
     u = get_user_model().objects.filter(username=(request.data.get("email") or "").lower().strip()).first()
     if u:
@@ -172,20 +199,32 @@ def forgot(request):
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
 def reset(request):
     try: d = signing.loads(request.data.get("token", ""), salt="reset", max_age=3600)
     except signing.BadSignature: return Response({"error": "This link is invalid or expired"}, status=400)
     u = get_user_model().objects.filter(id=d["u"]).first(); pw = request.data.get("password", "")
     if not u or u.password[-12:] != d["h"]: return Response({"error": "This link is invalid or expired"}, status=400)
-    if len(pw) < 6: return Response({"error": "Password must be 6+ characters"}, status=400)
-    u.set_password(pw); u.save(); return Response({"ok": True})
+    try: validate_password(pw, u)
+    except DjangoValidationError as e: return Response({"error": " ".join(e.messages)}, status=400)
+    u.set_password(pw); u.save(); revoke_all(u); return Response({"ok": True})
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
 def verify(request):
     try: d = signing.loads(request.data.get("token", ""), salt="verify", max_age=86400 * 3)
     except signing.BadSignature: return Response({"error": "This link is invalid or expired"}, status=400)
     p, _ = Profile.objects.get_or_create(user_id=d["u"]); p.verified = True; p.save(); return Response({"ok": True})
 
 @api_view(["POST"])
+@throttle_classes([AuthUser])
 def resend(request): send_verify(request.user); return Response({"ok": True})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+@throttle_classes([AuthAnon])
+def logout(request):
+    try: RefreshToken(request.data.get("refresh", "")).blacklist()
+    except Exception: pass
+    return Response({"ok": True})

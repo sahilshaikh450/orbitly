@@ -20,7 +20,7 @@ export default function Auth({ onLogin, resetToken }) {
       <h2>{T[mode][0]}</h2><p className="muted">{T[mode][1]}</p>
       {mode === "register" && <input placeholder="Full name" value={f.name} onChange={set("name")} required />}
       {mode !== "reset" && <input type="email" placeholder="Email" value={f.email} onChange={set("email")} required />}
-      {mode !== "forgot" && <div className="pw"><input type={show ? "text" : "password"} placeholder={mode === "reset" ? "New password (min 6 characters)" : "Password (min 6 characters)"} value={f.password} onChange={set("password")} required />
+      {mode !== "forgot" && <div className="pw"><input type={show ? "text" : "password"} placeholder={mode === "reset" ? "New password (min 8 characters)" : "Password (min 8 characters)"} value={f.password} onChange={set("password")} required />
         <a onClick={() => setShow(!show)}>{show ? "Hide" : "Show"}</a></div>}
       {mode === "login" && <div style={{ textAlign: "right", marginBottom: 8 }}><a onClick={() => go("forgot")}>Forgot password?</a></div>}
       {err && <div className="err">{err}</div>}{info && <div className="ok">{info}</div>}
