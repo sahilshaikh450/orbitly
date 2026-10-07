@@ -1,11 +1,11 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
 const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
-    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState("");
-  const load = () => api(`/${kind}/`).then(setItems);
+    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState(""), [loaded, setLoaded] = useState(false);
+  const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); });
   useEffect(() => { if (kind === "expenses") api("/recurring/run/", { method: "POST" }).finally(load); else load(); api(`/templates/${kind}/`).then(setTpls); }, []);
   const create = async (d) => { const b = { ...d }; Object.keys(b).forEach((k) => b[k] === "" && delete b[k]);
     if (kind === "expenses" && !b.date) b.date = now; await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); };
@@ -35,10 +35,11 @@ export default function Module({ kind }) {
     {kind === "expenses" && sub === "emi" && <Emi />}
     {kind === "expenses" && sub === "budget" && <Budgets expenses={items} />}
     {kind === "expenses" && sub === "recurring" && <Recurring reload={load} />}
-    {main && <>
+    {main && !loaded && <Skel />}
+    {main && loaded && <>
     {kind === "expenses" && <div className="row" style={{ marginBottom: 12 }}><button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(-1)}>‹</button><b style={{ minWidth: 150, textAlign: "center" }}>{monLabel}</b>
       <button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(1)}>›</button><button className={"chip " + (mon === "ALL" ? "on" : "")} onClick={() => setMon(mon === "ALL" ? new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") : "ALL")}>{mon === "ALL" ? "Back to month view" : "All time"}</button></div>}
-    <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
+    <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{o}</button>)}</div></div>
     {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
@@ -46,7 +47,7 @@ export default function Module({ kind }) {
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
         <div className="tags"><span className="tag">{h.frequency}</span><span className="tag">{h.category}</span><span className="tag fire">🔥 {h.streak}</span></div>
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
-      <button className={"check " + (h.done_today ? "done" : "")} onClick={() => check(h.id)}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
+      <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
       <Trend items={items} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
       <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
@@ -57,7 +58,7 @@ export default function Module({ kind }) {
         <div className="tabs" style={{ margin: 0 }}>{[["board", "Board"], ["list", "List"], ["today", "Today"], ["calendar", "Calendar"]].map(([k, l]) => <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l}</button>)}</div></div></>}
     {kind === "todos" && view === "calendar" && <CalendarView items={shown} openEdit={openEdit} create={create} />}
     {kind === "todos" && (view === "list" || view === "today") && <TaskList items={shown} view={view} patch={patch} del={del} openEdit={openEdit} />}
-    {kind === "todos" && view === "board" && <div className="kanban">{COLS.map(([s, label], ci) => <div className="col" key={s} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("id"); if (id) patch(Number(id), { status: s }); }}><h3>{label} ({shown.filter((t) => t.status === s).length})</h3>
+    {kind === "todos" && view === "board" && <div className="kanban">{COLS.map(([s, label], ci) => <div className="col" key={s} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("id"); if (id) { if (s === "DONE") confetti(e.clientX, e.clientY); patch(Number(id), { status: s }); } }}><h3>{label} ({shown.filter((t) => t.status === s).length})</h3>
       {shown.filter((t) => t.status === s).map((t) => { const sb = t.subtasks || [];
         return <div className={"card task " + (s !== "DONE" && t.due_date && t.due_date < now ? "late" : "")} key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)}><b className="link" onClick={() => openEdit(t)}>{t.title}</b><div className="muted small">{t.description}</div>
           <div className="tags"><span className={"tag p-" + t.priority}>{t.priority}</span>{t.due_date && <span className="tag">📅 {t.due_date}</span>}{t.tags && <span className="tag">#{t.tags}</span>}{t.focus_minutes > 0 && <span className="tag">⏱ {t.focus_minutes}m</span>}{t.repeat && t.repeat !== "NONE" && <span className="tag">🔁 {t.repeat}</span>}{sb.length > 0 && <span className="tag">{sb.filter((x) => x.done).length}/{sb.length}</span>}</div>
@@ -65,7 +66,7 @@ export default function Module({ kind }) {
             <input className="mini" placeholder="+ Add subtask" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { patch(t.id, { subtasks: [...sb, { t: e.target.value.trim(), done: false }] }); e.target.value = ""; } }} /></div>
           <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}>◀</button>{delBtn(t.id)}
             <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}>▶</button></div></div>; })}</div>)}</div>}
-    {items.length === 0 && <p className="muted center">Nothing here yet. Start with a template above.</p>}</>}
+    {loaded && items.length === 0 && <p className="muted center">Nothing here yet. Start with a template above.</p>}</>}
     {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
     {modal && <div className="overlay" onClick={() => setModal(null)}><div className="modal" onClick={(e) => e.stopPropagation()}>
       <div className="row sp"><h2>{modal === "tpl" ? `📋 ${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}>✕</button></div>

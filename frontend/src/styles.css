@@ -81,3 +81,43 @@ main{max-width:none;width:100%;min-width:0;padding:28px clamp(16px,3vw,48px)}
 }
 
 .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ac);color:#fff;padding:12px 20px;border-radius:14px;font-weight:700;z-index:50;cursor:pointer;box-shadow:0 8px 30px #0004}
+
+/* ---------- animations ---------- */
+@keyframes rise{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}@keyframes fade{from{opacity:0}to{opacity:1}}
+@keyframes zoom{from{opacity:0;transform:scale(.94)}to{opacity:1;transform:none}}@keyframes grow{from{width:0}}@keyframes growy{from{height:0}}
+@keyframes spin{to{transform:rotate(360deg)}}@keyframes float{0%,100%{transform:translate(0,0)}50%{transform:translate(30px,-26px)}}
+@keyframes pop{0%{transform:scale(.6)}60%{transform:scale(1.22)}100%{transform:scale(1)}}@keyframes flicker{0%,100%{transform:scale(1)}50%{transform:scale(1.08);filter:brightness(1.25)}}
+@keyframes shimmer{to{background-position:-200% 0}}@keyframes pulse{0%,100%{box-shadow:0 0 0 0 #f59e0b55}50%{box-shadow:0 0 0 8px #f59e0b00}}
+@keyframes toast{from{opacity:0;transform:translate(-50%,20px)}to{opacity:1;transform:translate(-50%,0)}}
+.page{animation:rise .4s cubic-bezier(.2,.8,.2,1) backwards}
+.stats>*,.grid>*,.list>*,.dash>*,.badges>*,.kanban>.col,.scorecard{animation:rise .5s cubic-bezier(.2,.8,.2,1) backwards}
+.card,.btn,.chip,.nav,.tabs button,.check,.cal-c,.me{transition:transform .18s,box-shadow .2s,background .2s,border-color .2s,color .2s}
+.stats>.card:hover,.grid>.card:hover,.list>.card:hover,.task:hover{transform:translateY(-3px);box-shadow:0 12px 30px #0003;border-color:var(--ac)}
+.btn:hover:not(:disabled){transform:translateY(-1px)}.btn:active,.chip:active,.check:active,.nav:active{transform:scale(.95)}.check:hover{transform:scale(1.1)}
+.check.done{animation:pop .4s}.tag.fire{display:inline-block;animation:flicker 1.8s infinite}
+.prog i,.bar i{animation:grow .9s cubic-bezier(.2,.8,.2,1) backwards}.wbars i,.pair i{animation:growy .8s cubic-bezier(.2,.8,.2,1) backwards}
+.wk{animation:fade .7s backwards}.overlay{animation:fade .2s}.modal{animation:zoom .25s cubic-bezier(.2,.8,.2,1)}.toast{animation:toast .4s}
+.skel{border-radius:16px;margin-bottom:14px;background:linear-gradient(90deg,var(--card) 25%,var(--chip) 50%,var(--card) 75%);background-size:200% 100%;animation:shimmer 1.2s infinite}
+.scorecard{display:flex;gap:24px;align-items:center;margin-bottom:14px}.ring .v{transition:stroke-dasharray 1.2s cubic-bezier(.2,.8,.2,1)}.warn{border-color:#f59e0b;animation:pulse 2s infinite}
+.cf{position:fixed;width:8px;height:8px;border-radius:2px;pointer-events:none;z-index:100}
+.orb{animation:float 12s ease-in-out infinite}.o2{animation-duration:16s;animation-direction:reverse}
+.auth-hero h1,.auth-hero p{animation:rise .7s backwards}.auth-hero p{animation-delay:.15s}.auth-hero li{animation:rise .6s backwards}.auth-card{animation:zoom .6s .1s backwards}
+.splash{position:fixed;inset:0;z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 50% 40%,#10231c,#07070d 70%);color:#fff;overflow:hidden;transition:opacity .5s,transform .5s;cursor:pointer}
+.splash.out{opacity:0;transform:scale(1.06);pointer-events:none}.sp-svg{width:130px;height:130px}.sp-ring{stroke-dasharray:252;stroke-dashoffset:252;animation:draw 1.2s .1s ease-out forwards}
+@keyframes draw{to{stroke-dashoffset:0}}.sp-spin{transform-origin:60px 60px;animation:spin 2.2s linear infinite}.sp-core{transform-origin:60px 60px;animation:pop 1s .2s backwards,flicker 2s 1.2s infinite}
+.sp-logo{font-size:54px;margin-top:18px;letter-spacing:1px}.sp-logo span{display:inline-block;opacity:0;transform:translateY(24px);animation:rise .5s forwards}.sp-logo span:nth-child(n+5){color:#34d399}
+.sp-tag{color:#8a8aa3;margin-top:6px;opacity:0;animation:fade .6s 1.3s forwards}.sp-bar{width:160px;height:3px;border-radius:3px;background:#ffffff22;margin-top:26px;overflow:hidden}.sp-bar i{display:block;height:100%;background:linear-gradient(90deg,#10b981,#8b5cf6);animation:grow 2.2s ease-out}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-delay:0ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}}
+.stats>*:nth-child(1),.grid>*:nth-child(1),.list>*:nth-child(1),.dash>*:nth-child(1),.badges>*:nth-child(1),.kanban>.col:nth-child(1){animation-delay:50ms}
+.stats>*:nth-child(2),.grid>*:nth-child(2),.list>*:nth-child(2),.dash>*:nth-child(2),.badges>*:nth-child(2),.kanban>.col:nth-child(2){animation-delay:100ms}
+.stats>*:nth-child(3),.grid>*:nth-child(3),.list>*:nth-child(3),.dash>*:nth-child(3),.badges>*:nth-child(3),.kanban>.col:nth-child(3){animation-delay:150ms}
+.stats>*:nth-child(4),.grid>*:nth-child(4),.list>*:nth-child(4),.dash>*:nth-child(4),.badges>*:nth-child(4),.kanban>.col:nth-child(4){animation-delay:200ms}
+.stats>*:nth-child(5),.grid>*:nth-child(5),.list>*:nth-child(5),.dash>*:nth-child(5),.badges>*:nth-child(5),.kanban>.col:nth-child(5){animation-delay:250ms}
+.stats>*:nth-child(6),.grid>*:nth-child(6),.list>*:nth-child(6),.dash>*:nth-child(6),.badges>*:nth-child(6),.kanban>.col:nth-child(6){animation-delay:300ms}
+.stats>*:nth-child(7),.grid>*:nth-child(7),.list>*:nth-child(7),.dash>*:nth-child(7),.badges>*:nth-child(7),.kanban>.col:nth-child(7){animation-delay:350ms}
+.stats>*:nth-child(8),.grid>*:nth-child(8),.list>*:nth-child(8),.dash>*:nth-child(8),.badges>*:nth-child(8),.kanban>.col:nth-child(8){animation-delay:400ms}
+.stats>*:nth-child(9),.grid>*:nth-child(9),.list>*:nth-child(9),.dash>*:nth-child(9),.badges>*:nth-child(9),.kanban>.col:nth-child(9){animation-delay:450ms}
+.stats>*:nth-child(10),.grid>*:nth-child(10),.list>*:nth-child(10),.dash>*:nth-child(10),.badges>*:nth-child(10),.kanban>.col:nth-child(10){animation-delay:500ms}
+.stats>*:nth-child(11),.grid>*:nth-child(11),.list>*:nth-child(11),.dash>*:nth-child(11),.badges>*:nth-child(11),.kanban>.col:nth-child(11){animation-delay:550ms}
+.stats>*:nth-child(12),.grid>*:nth-child(12),.list>*:nth-child(12),.dash>*:nth-child(12),.badges>*:nth-child(12),.kanban>.col:nth-child(12){animation-delay:600ms}
+.auth-hero li:nth-child(1){animation-delay:.3s}.auth-hero li:nth-child(2){animation-delay:.4s}.auth-hero li:nth-child(3){animation-delay:.5s}.auth-hero li:nth-child(4){animation-delay:.6s}

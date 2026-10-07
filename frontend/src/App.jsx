@@ -22,5 +22,5 @@ export default function App() {
       <button className="red" onClick={logout}>🚪 Log out</button></div>}
     <button className="nav" onClick={() => setPal(true)}>🔎 Quick actions <kbd>Ctrl K</kbd></button>
     <button className="me" onClick={() => setMenu(!menu)}><span className="avatar sm">{(name || "?")[0].toUpperCase()}</span><span>{name}</span></button></aside>
-    <main>{tab === "home" ? <Home key={rev} name={name} go={go} /> : tab === "profile" ? <Profile /> : tab === "settings" ? <Settings theme={theme} setTheme={setTheme} onName={setName} logout={logout} /> : <Module key={tab + rev} kind={tab} />}</main>{toast}{pal && <Palette onClose={() => setPal(false)} onDone={(t) => { setTab(t); setRev((r) => r + 1); }} toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} logout={logout} />}</div>);
+    <main><div className="page" key={tab + rev}>{tab === "home" ? <Home key={rev} name={name} go={go} /> : tab === "profile" ? <Profile /> : tab === "settings" ? <Settings theme={theme} setTheme={setTheme} onName={setName} logout={logout} /> : <Module key={tab + rev} kind={tab} />}</div></main>{toast}{pal && <Palette onClose={() => setPal(false)} onDone={(t) => { setTab(t); setRev((r) => r + 1); }} toggleTheme={() => setTheme(theme === "dark" ? "light" : "dark")} logout={logout} />}</div>);
 }

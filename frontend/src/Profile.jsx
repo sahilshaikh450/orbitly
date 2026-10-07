@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel } from "./Extras";
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lvl = (n) => (n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
 const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -6,7 +6,7 @@ const ICON = { HABIT: "💪", MONEY: "💰", TASK: "✅", GOAL: "🎯", SPLIT: "
 export function Profile() {
   const [p, setP] = useState(null); const [day, setDay] = useState(null);
   useEffect(() => { api("/profile/").then(setP); }, []);
-  if (!p) return <p className="muted">Loading...</p>;
+  if (!p) return <Skel />;
   const end = new Date(), start = new Date(end); start.setDate(start.getDate() - 364); start.setDate(start.getDate() - start.getDay());
   const weeks = []; let d = new Date(start), w = [];
   while (d <= end) { w.push(new Date(d)); if (w.length === 7) { weeks.push(w); w = []; } d.setDate(d.getDate() + 1); } if (w.length) weeks.push(w);
@@ -17,7 +17,7 @@ export function Profile() {
     <div className="card prof"><div className="avatar">{(p.name || p.email)[0].toUpperCase()}</div>
       <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p></div></div>
     <div className="stats">{[["Current streak", p.current_streak + " days 🔥"], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
-      <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
+      <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="card"><b>Achievements</b><div className="badges">{[["🌱", "First step", p.total >= 1], ["🔥", "3-day streak", p.longest_streak >= 3], ["⚡", "7-day streak", p.longest_streak >= 7], ["🏆", "30-day streak", p.longest_streak >= 30],
       ["📅", "30 active days", p.active_days >= 30], ["💯", "100 activities", p.total >= 100], ["🎯", "Goal setter", (p.kinds.GOAL || 0) >= 1], ["🤝", "Split master", (p.kinds.SPLIT || 0) >= 1]].map(([i, n, on]) =>
       <div key={n} className={"badge " + (on ? "on" : "")}><span>{i}</span><small>{n}</small></div>)}</div></div>
