@@ -1,4 +1,5 @@
 import calendar
+import logging
 from django.conf import settings as dj
 from django.core import signing
 from django.core.mail import send_mail
@@ -26,7 +27,9 @@ class AuthUser(UserRateThrottle): scope = "auth"
 def revoke_all(u):
     for t in OutstandingToken.objects.filter(user=u): BlacklistedToken.objects.get_or_create(token=t)
 
-def _mail(to, subject, body): send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
+def _mail(to, subject, body):
+    try: send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to])
+    except Exception: logging.getLogger(__name__).exception("Email send failed")
 def _link(k, t): return f"{dj.FRONTEND_URL}/?{k}={t}"
 def send_verify(u):
     _mail(u.email, "Verify your Orbitly email", f"Welcome to Orbitly!\n\nVerify your email: {_link('verify', signing.dumps({'u': u.id}, salt='verify'))}\n")
@@ -228,3 +231,8 @@ def logout(request):
     try: RefreshToken(request.data.get("refresh", "")).blacklist()
     except Exception: pass
     return Response({"ok": True})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@throttle_classes([])
+def health(request): return Response({"ok": True})
