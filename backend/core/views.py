@@ -1,4 +1,5 @@
 import calendar
+import logging
 from django.conf import settings as dj
 from django.core import signing
 from django.core.mail import send_mail
@@ -16,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Activity, Profile
+from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Journal, Account, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
 
@@ -26,7 +27,9 @@ class AuthUser(UserRateThrottle): scope = "auth"
 def revoke_all(u):
     for t in OutstandingToken.objects.filter(user=u): BlacklistedToken.objects.get_or_create(token=t)
 
-def _mail(to, subject, body): send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
+def _mail(to, subject, body):
+    try: send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to])
+    except Exception: logging.getLogger(__name__).exception("Email send failed")
 def _link(k, t): return f"{dj.FRONTEND_URL}/?{k}={t}"
 def send_verify(u):
     _mail(u.email, "Verify your Orbitly email", f"Welcome to Orbitly!\n\nVerify your email: {_link('verify', signing.dumps({'u': u.id}, salt='verify'))}\n")
@@ -63,6 +66,16 @@ class HabitViewSet(Own):
 class ExpenseViewSet(Own):
     queryset = Expense.objects.all(); serializer_class = ExpenseSerializer
     def after_create(self, o): log(o.user, "MONEY", f"{'Earned' if o.type == 'INCOME' else 'Spent'} {o.amount} - {o.title}")
+    @action(detail=False, methods=["post"])
+    def bulk(self, request):
+        rows = request.data
+        if not isinstance(rows, list) or not 0 < len(rows) <= 500: return Response({"error": "Send between 1 and 500 rows"}, status=400)
+        s = self.get_serializer(data=rows, many=True)
+        if not s.is_valid():
+            i = next(n for n, e in enumerate(s.errors) if e)
+            return Response({"error": f"Row {i + 2}: " + "; ".join(f"{k}: {' '.join(map(str, v))}" for k, v in s.errors[i].items())}, status=400)
+        s.save(user=request.user); log(request.user, "MONEY", f"Imported {len(rows)} transactions")
+        return Response({"created": len(rows)}, status=201)
 
 class TodoViewSet(Own):
     queryset = Todo.objects.all(); serializer_class = TodoSerializer
@@ -115,6 +128,25 @@ def run_recurring(request):
             r.next_date = advance(r.next_date, r.frequency); c += 1; n += 1
         r.save()
     return Response({"created": n})
+
+class JournalViewSet(Own):
+    queryset = Journal.objects.all(); serializer_class = JournalSerializer
+    def get_queryset(self): return super().get_queryset().order_by("-date")
+    def create(self, request, *a, **k):
+        s = self.get_serializer(data=request.data); s.is_valid(raise_exception=True)
+        d = dict(s.validated_data); day = d.pop("date", date.today())
+        obj, created = Journal.objects.update_or_create(user=request.user, date=day, defaults=d)
+        if created: log(request.user, "JOURNAL", "Wrote a journal entry")
+        return Response(self.get_serializer(obj).data, status=201 if created else 200)
+
+class AccountViewSet(Own):
+    queryset = Account.objects.all(); serializer_class = AccountSerializer
+    def _hist(self, o):
+        t = str(date.today()); o.history = [x for x in o.history if x[0] != t][-199:] + [[t, float(o.balance)]]; o.save(update_fields=["history"])
+    def after_create(self, o): self._hist(o); log(o.user, "MONEY", f"Added account {o.name}")
+    def perform_update(self, s):
+        old = self.get_object().balance; o = s.save()
+        if o.balance != old: self._hist(o)
 
 class BudgetViewSet(Own):
     queryset = Budget.objects.all(); serializer_class = BudgetSerializer
@@ -228,3 +260,8 @@ def logout(request):
     try: RefreshToken(request.data.get("refresh", "")).blacklist()
     except Exception: pass
     return Response({"ok": True})
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
+@throttle_classes([])
+def health(request): return Response({"ok": True})

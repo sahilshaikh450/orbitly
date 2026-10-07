@@ -9,6 +9,7 @@ class Habit(models.Model):
     icon = models.CharField(max_length=8, default="🎯")
     frequency = models.CharField(max_length=10, default="DAILY")
     category = models.CharField(max_length=20, default="OTHER")
+    weekly_target = models.PositiveSmallIntegerField(default=7)
     created = models.DateTimeField(auto_now_add=True)
 
 class HabitLog(models.Model):
@@ -83,3 +84,19 @@ class Recurring(models.Model):
     frequency = models.CharField(max_length=10, default="MONTHLY")
     next_date = models.DateField(default=datetime.date.today)
     active = models.BooleanField(default=True)
+
+class Journal(models.Model):
+    user = models.ForeignKey(U, on_delete=models.CASCADE)
+    date = models.DateField(default=datetime.date.today)
+    mood = models.SmallIntegerField(default=3)
+    text = models.TextField(blank=True)
+    tags = models.CharField(max_length=120, blank=True)
+    class Meta: unique_together = ("user", "date")
+
+class Account(models.Model):
+    user = models.ForeignKey(U, on_delete=models.CASCADE)
+    name = models.CharField(max_length=80)
+    icon = models.CharField(max_length=8, default="🏦")
+    kind = models.CharField(max_length=12, default="BANK")
+    balance = models.DecimalField(max_digits=14, decimal_places=2, default=0)
+    history = models.JSONField(default=list, blank=True)

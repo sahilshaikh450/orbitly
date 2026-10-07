@@ -5,7 +5,7 @@ export const CFG = {
   habits: { title: "Habit Forge", icon: "💪", sub: "Build atomic habits. Transform your life.", noun: "Habit",
     fields: [["icon","Icon","text","🎯"],["name","Name","text",""],["description","Description","text",""],
       ["frequency","Frequency","select","DAILY",opts("DAILY WEEKLY MONTHLY")],
-      ["category","Category","select","HEALTH",opts("HEALTH FITNESS MINDFULNESS LEARNING PRODUCTIVITY SOCIAL FINANCE CREATIVITY OTHER")]],
+      ["weekly_target","Weekly target (days)","number","7"],["category","Category","select","HEALTH",opts("HEALTH FITNESS MINDFULNESS LEARNING PRODUCTIVITY SOCIAL FINANCE CREATIVITY OTHER")]],
     filter: ["category", opts("HEALTH FITNESS MINDFULNESS LEARNING PRODUCTIVITY SOCIAL OTHER")],
     stats: (a) => [["Total", a.length], ["Done Today", a.filter(x=>x.done_today).length],
       ["Best Streak", Math.max(0,...a.map(x=>x.streak)) + "🔥"],

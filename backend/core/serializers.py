@@ -6,12 +6,14 @@ S = lambda s: set(s.split())
 EXP_CATS = S("FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST SALARY OTHER")
 
 class Checked:
-    CHOICES = {}; POSITIVE = ()
+    CHOICES = {}; POSITIVE = (); NONNEG = ()
     def validate(self, a):
         for f, ok in self.CHOICES.items():
             if f in a and a[f] not in ok: raise serializers.ValidationError({f: f"Must be one of: {', '.join(sorted(ok))}"})
         for f in self.POSITIVE:
             if f in a and a[f] <= 0: raise serializers.ValidationError({f: "Must be greater than 0"})
+        for f in self.NONNEG:
+            if f in a and a[f] < 0: raise serializers.ValidationError({f: "Cannot be negative"})
         return super().validate(a)
 
 class Base(Checked, serializers.ModelSerializer):
@@ -34,6 +36,9 @@ class HabitSerializer(Checked, serializers.ModelSerializer):
     class Meta:
         model = Habit; fields = "__all__"; read_only_fields = ["user"]
     def get_done_today(self, o): return o.logs.filter(date=date.today()).exists()
+    def validate_weekly_target(self, v):
+        if not 1 <= v <= 7: raise serializers.ValidationError("Weekly target must be between 1 and 7")
+        return v
     def get_week(self, o):
         days = set(o.logs.values_list("date", flat=True)); t = date.today()
         return [(t - timedelta(days=6 - i)) in days for i in range(7)]
@@ -76,3 +81,23 @@ ExpenseSerializer = make(Expense, {"type": S("EXPENSE INCOME"), "category": EXP_
 GoalSerializer = make(Goal, {"kind": S("SAVING EMERGENCY")}, ("target",))
 BudgetSerializer = make(Budget, {"category": EXP_CATS}, ("limit",))
 RecurringSerializer = make(Recurring, {"type": S("EXPENSE INCOME"), "category": EXP_CATS, "payment_method": S("UPI CARD CASH BANK"), "frequency": S("WEEKLY MONTHLY YEARLY")}, ("amount",))
+
+from .models import Journal
+class JournalSerializer(Base):
+    class Meta:
+        model = Journal; fields = "__all__"; read_only_fields = ["user"]
+    def validate_mood(self, v):
+        if not 1 <= v <= 5: raise serializers.ValidationError("Mood must be between 1 and 5")
+        return v
+    def validate_text(self, v):
+        if len(v) > 5000: raise serializers.ValidationError("Entries can be up to 5000 characters")
+        return v
+    def validate_date(self, v):
+        if v > date.today(): raise serializers.ValidationError("Date cannot be in the future")
+        return v
+
+from .models import Account
+class AccountSerializer(Checked, serializers.ModelSerializer):
+    CHOICES = {"kind": S("CASH BANK WALLET INVESTMENT CREDIT LOAN")}; NONNEG = ("balance",)
+    class Meta:
+        model = Account; fields = "__all__"; read_only_fields = ["user", "history"]
