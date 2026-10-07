@@ -93,3 +93,5 @@ export function confetti(x, y) {
 
 export const level = (n) => { const l = Math.floor(Math.sqrt(n / 5)) + 1, lo = 5 * (l - 1) ** 2, hi = 5 * l ** 2;
   return { l, pct: Math.round(((n - lo) / (hi - lo)) * 100), left: hi - n, name: ["Novice", "Explorer", "Achiever", "Pro", "Master", "Legend"][Math.min(5, Math.floor((l - 1) / 2))] }; };
+
+export const undoable = (msg, fn) => window.dispatchEvent(new CustomEvent("undo", { detail: { msg, fn } }));

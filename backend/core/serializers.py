@@ -6,12 +6,14 @@ S = lambda s: set(s.split())
 EXP_CATS = S("FOOD HOME BILLS TRAVEL SHOPPING ENTERTAINMENT HEALTH INVEST SALARY OTHER")
 
 class Checked:
-    CHOICES = {}; POSITIVE = ()
+    CHOICES = {}; POSITIVE = (); NONNEG = ()
     def validate(self, a):
         for f, ok in self.CHOICES.items():
             if f in a and a[f] not in ok: raise serializers.ValidationError({f: f"Must be one of: {', '.join(sorted(ok))}"})
         for f in self.POSITIVE:
             if f in a and a[f] <= 0: raise serializers.ValidationError({f: "Must be greater than 0"})
+        for f in self.NONNEG:
+            if f in a and a[f] < 0: raise serializers.ValidationError({f: "Cannot be negative"})
         return super().validate(a)
 
 class Base(Checked, serializers.ModelSerializer):
@@ -34,6 +36,9 @@ class HabitSerializer(Checked, serializers.ModelSerializer):
     class Meta:
         model = Habit; fields = "__all__"; read_only_fields = ["user"]
     def get_done_today(self, o): return o.logs.filter(date=date.today()).exists()
+    def validate_weekly_target(self, v):
+        if not 1 <= v <= 7: raise serializers.ValidationError("Weekly target must be between 1 and 7")
+        return v
     def get_week(self, o):
         days = set(o.logs.values_list("date", flat=True)); t = date.today()
         return [(t - timedelta(days=6 - i)) in days for i in range(7)]
@@ -90,3 +95,9 @@ class JournalSerializer(Base):
     def validate_date(self, v):
         if v > date.today(): raise serializers.ValidationError("Date cannot be in the future")
         return v
+
+from .models import Account
+class AccountSerializer(Checked, serializers.ModelSerializer):
+    CHOICES = {"kind": S("CASH BANK WALLET INVESTMENT CREDIT LOAN")}; NONNEG = ("balance",)
+    class Meta:
+        model = Account; fields = "__all__"; read_only_fields = ["user", "history"]

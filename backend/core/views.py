@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import AnonRateThrottle, UserRateThrottle
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
-from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Journal, Activity, Profile
+from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Journal, Account, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
 
@@ -138,6 +138,15 @@ class JournalViewSet(Own):
         obj, created = Journal.objects.update_or_create(user=request.user, date=day, defaults=d)
         if created: log(request.user, "JOURNAL", "Wrote a journal entry")
         return Response(self.get_serializer(obj).data, status=201 if created else 200)
+
+class AccountViewSet(Own):
+    queryset = Account.objects.all(); serializer_class = AccountSerializer
+    def _hist(self, o):
+        t = str(date.today()); o.history = [x for x in o.history if x[0] != t][-199:] + [[t, float(o.balance)]]; o.save(update_fields=["history"])
+    def after_create(self, o): self._hist(o); log(o.user, "MONEY", f"Added account {o.name}")
+    def perform_update(self, s):
+        old = self.get_object().balance; o = s.save()
+        if o.balance != old: self._hist(o)
 
 class BudgetViewSet(Own):
     queryset = Budget.objects.all(); serializer_class = BudgetSerializer

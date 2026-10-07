@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring, Accounts } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti, undoable } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
-const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
+const SUBS = [["tx", "Transactions"], ["accounts", "Accounts"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
@@ -8,8 +8,9 @@ export default function Module({ kind }) {
   const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); });
   useEffect(() => { if (kind === "expenses") api("/recurring/run/", { method: "POST" }).finally(load); else load(); api(`/templates/${kind}/`).then(setTpls); }, []);
   const create = async (d) => { const b = { ...d }; Object.keys(b).forEach((k) => b[k] === "" && delete b[k]);
-    if (kind === "expenses" && !b.date) b.date = now; await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); };
-  const del = async (id) => { await api(`/${kind}/${id}/`, { method: "DELETE" }); load(); };
+    if (kind === "expenses" && !b.date) b.date = now; try { await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); } catch (x) { alert(x.message); } };
+  const del = async (id) => { const it = items.find((x) => x.id === id); await api(`/${kind}/${id}/`, { method: "DELETE" }); load();
+    if (it) undoable(`${cfg.noun} deleted`, async () => { const b = {}; [...cfg.fields.map((f) => f[0]), "subtasks"].forEach((k) => { if (it[k] !== undefined && it[k] !== null && it[k] !== "") b[k] = it[k]; }); await api(`/${kind}/`, { method: "POST", body: b }); load(); }); };
   const patch = async (id, body) => { await api(`/${kind}/${id}/`, { method: "PATCH", body }); load(); };
   const check = async (id) => { await api(`/habits/${id}/check/`, { method: "POST" }); load(); };
   const openNew = () => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], f[3]]))); setModal("new"); };
@@ -21,8 +22,8 @@ export default function Module({ kind }) {
   const openEdit = (it) => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], it[f[0]] ?? ""]))); setModal("edit:" + it.id); };
   const submitForm = async (e) => { e.preventDefault();
     if (modal === "new") return create(form);
-    const b = { ...form }; cfg.fields.forEach((f) => { if (b[f[0]] === "") b[f[0]] = f[2] === "date" ? null : ""; });
-    await patch(Number(modal.split(":")[1]), b); setModal(null); };
+    const b = { ...form }; cfg.fields.forEach((f) => { if (b[f[0]] === "") { if (f[2] === "number") delete b[f[0]]; else b[f[0]] = f[2] === "date" ? null : ""; } });
+    try { await patch(Number(modal.split(":")[1]), b); setModal(null); } catch (x) { alert(x.message); } };
   const sorter = (a) => (sort === "streak" ? [...a].sort((x, y) => y.streak - x.streak) : sort === "name" ? [...a].sort((x, y) => x.name.localeCompare(y.name)) : a);
   const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}>🗑</button>;
   const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
@@ -35,6 +36,7 @@ export default function Module({ kind }) {
     {kind === "expenses" && sub === "emi" && <Emi />}
     {kind === "expenses" && sub === "budget" && <Budgets expenses={items} />}
     {kind === "expenses" && sub === "recurring" && <Recurring reload={load} />}
+    {kind === "expenses" && sub === "accounts" && <Accounts />}
     {main && !loaded && <Skel />}
     {main && loaded && <>
     {kind === "expenses" && <div className="row" style={{ marginBottom: 12 }}><button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(-1)}>‹</button><b style={{ minWidth: 150, textAlign: "center" }}>{monLabel}</b>
@@ -45,7 +47,7 @@ export default function Module({ kind }) {
     {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
     {kind === "habits" && <div className="grid">{sorter(shown).map((h) => <div className="card habit" key={h.id}>
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
-        <div className="tags"><span className="tag">{h.frequency}</span><span className="tag">{h.category}</span><span className="tag fire">🔥 {h.streak}</span></div>
+        <div className="tags"><span className="tag">{h.frequency}</span><span className="tag">{h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span></div>
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
@@ -66,7 +68,7 @@ export default function Module({ kind }) {
             <input className="mini" placeholder="+ Add subtask" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { patch(t.id, { subtasks: [...sb, { t: e.target.value.trim(), done: false }] }); e.target.value = ""; } }} /></div>
           <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}>◀</button>{delBtn(t.id)}
             <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}>▶</button></div></div>; })}</div>)}</div>}
-    {loaded && items.length === 0 && <p className="muted center">Nothing here yet. Start with a template above.</p>}</>}
+    {loaded && items.length === 0 && <div className="empty"><div className="e-ic">{cfg.icon}</div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => setModal("tpl")}>📋 Browse templates</button></div>}</>}
     {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
     {modal && <div className="overlay" onClick={() => setModal(null)}><div className="modal" onClick={(e) => e.stopPropagation()}>
       <div className="row sp"><h2>{modal === "tpl" ? `📋 ${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}>✕</button></div>

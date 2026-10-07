@@ -23,7 +23,7 @@ export default function Home({ name, go }) {
   if (inc > 0) ins.push(`💰 Savings rate this month: ${Math.round(((inc - exp) * 100) / inc)}%`);
   ins.push(`✅ ${wkItems.filter((i) => i.kind === "TASK").length} tasks and ${wkItems.filter((i) => i.kind === "HABIT").length} habit check-ins in the last 7 days`);
   if (best && best.rate30 > 0) ins.push(`🏅 Most consistent habit: ${best.name} (${best.rate30}% over 30 days)`);
-  return (<div><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} 👋</h1>
+  return (<div className="bento"><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} 👋</h1>
     <p className="muted">“{Q[now.getDate() % Q.length]}”</p></div></div>
     {!d.p.verified && <div className="card tip">📧 Please verify your email address. <button className="btn" onClick={() => api("/auth/resend/", { method: "POST" }).then(() => alert("Verification email sent. Check your inbox."))}>Resend email</button></div>}
     <div className="card scorecard"><Ring pct={score} /><div><div className="muted small">TODAY'S SCORE</div>

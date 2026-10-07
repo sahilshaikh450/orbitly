@@ -15,8 +15,17 @@ export default function Analytics() {
   const sum = (ty, m) => d.e.filter((x) => x.type === ty && x.date.startsWith(m)).reduce((n, x) => n + Number(x.amount), 0), inc = months.map(([m]) => sum("INCOME", m)), ex = months.map(([m]) => sum("EXPENSE", m));
   const mx = Math.max(1, ...inc, ...ex), X = (i) => 30 + i * (540 / 11), Y = (v) => 170 - (v / mx) * 150, pts = (a) => a.map((v, i) => `${X(i)},${Y(v)}`).join(" ");
   const wd = Array(7).fill(0); d.p.items.forEach((a) => { wd[new Date(a.date + "T00:00:00").getDay()]++; }); const wmax = Math.max(1, ...wd), best = wd.indexOf(Math.max(...wd));
+  const d7 = ymd(new Date(Date.now() - 6 * 864e5)), d14 = ymd(new Date(Date.now() - 13 * 864e5)), tom = ymd(new Date(Date.now() + 864e5));
+  const cnt = (f, lo, hi) => d.p.items.filter((a) => a.date >= lo && a.date < hi && f(a)).length, sp = (lo, hi) => d.e.filter((x) => x.type === "EXPENSE" && x.date >= lo && x.date < hi).reduce((n, x) => n + Number(x.amount), 0);
+  const isH = (a) => a.kind === "HABIT" && a.text.startsWith("Completed"), isT = (a) => a.kind === "TASK" && a.text.startsWith("Completed"), byDay = {};
+  d.p.items.forEach((a) => { if (a.date >= d7) byDay[a.date] = (byDay[a.date] || 0) + 1; }); const bd = Object.entries(byDay).sort((p, q) => q[1] - p[1])[0];
+  const rv = { a: cnt(() => true, d7, tom), pa: cnt(() => true, d14, d7), h: cnt(isH, d7, tom), ph: cnt(isH, d14, d7), t: cnt(isT, d7, tom), pt: cnt(isT, d14, d7), s: sp(d7, tom), ps: sp(d14, d7), best: bd ? DN[new Date(bd[0] + "T00:00:00").getDay()] : null };
   const wk = Array(8).fill(0); d.p.items.forEach((a) => { if (a.kind === "TASK" && a.text.startsWith("Completed")) { const n = Math.floor((Date.now() - new Date(a.date + "T00:00:00")) / (7 * 864e5)); if (n >= 0 && n < 8) wk[7 - n]++; } }); const kmax = Math.max(1, ...wk);
   return (<div><div className="head"><div><h1>📊 Analytics</h1><p className="muted">See where your money, time and energy go.</p></div></div>
+    <div className="card review"><div className="row sp"><b>✨ Your week in review</b><span className="muted small">last 7 days vs the 7 before</span></div>
+      <div className="rv">{[["Activities", rv.a, rv.pa], ["Habit check-ins", rv.h, rv.ph], ["Tasks done", rv.t, rv.pt], ["Spent", rv.s, rv.ps, true]].map(([l, v, p, money]) => <div key={l}><span className="muted small">{l}</span><b><Num v={money ? fmt(v) : v} /></b>
+        <em className={(money ? v <= p : v >= p) ? "up" : "down"}>{v === p ? "no change" : (v > p ? "▲ " : "▼ ") + (money ? fmt(Math.abs(v - p)) : Math.abs(v - p))}</em></div>)}</div>
+      <p className="muted">{rv.a ? `You were most active on ${rv.best}. Keep the momentum going!` : "No activity yet this week. Start small today!"}</p></div>
     <div className="tabs">{[["30", "30 days"], ["90", "90 days"], ["365", "1 year"], ["all", "All time"]].map(([k, l]) => <button key={k} className={range === k ? "on" : ""} onClick={() => setRange(k)}>{l}</button>)}</div>
     <div className="stats">{[["Spent", fmt(spent)], ["Income", fmt(income)], ["Avg / day", fmt(spent / days)], ["Savings rate", income ? Math.round(((income - spent) * 100) / income) + "%" : "—"]].map(([l, v]) =>
       <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>

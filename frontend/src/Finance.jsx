@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config"; import { Num } from "./Extras";
 const fmt = (n) => cur() + Math.round(n).toLocaleString("en-IN");
 const PRESETS = [["🛟", "Emergency Fund", "EMERGENCY"], ["🏖️", "Vacation", "SAVING"], ["💻", "New Laptop", "SAVING"], ["🏠", "Down Payment", "SAVING"], ["🎓", "Education", "SAVING"], ["💍", "Wedding", "SAVING"]];
 function GoalCard({ g, onAdd, onDel }) {
@@ -148,4 +148,31 @@ export function Recurring({ reload }) {
       <button className="chip" onClick={() => api(`/recurring/${x.id}/`, { method: "PATCH", body: { active: !x.active } }).then(load)}>{x.active ? "Pause" : "Resume"}</button>
       <button className="icon-btn" onClick={() => api(`/recurring/${x.id}/`, { method: "DELETE" }).then(load)}>🗑</button></div>)}</div>
     {r.length === 0 && <p className="muted center">No recurring items yet. Pick a preset above.</p>}</div>);
+}
+
+const AK = { CASH: "Cash", BANK: "Bank", WALLET: "Wallet", INVESTMENT: "Investments", CREDIT: "Credit card", LOAN: "Loan" }, LIAB = ["CREDIT", "LOAN"];
+const AP = [["🏦", "Savings Account", "BANK"], ["💵", "Cash in hand", "CASH"], ["📱", "UPI wallet", "WALLET"], ["📈", "Mutual funds", "INVESTMENT"], ["💳", "Credit card", "CREDIT"], ["🏠", "Home loan", "LOAN"]];
+export function Accounts() {
+  const [a, setA] = useState([]), [f, setF] = useState(null), [ed, setEd] = useState({});
+  const load = () => api("/accounts/").then(setA); useEffect(() => { load(); }, []);
+  const sg = (x) => (LIAB.includes(x.kind) ? -1 : 1), assets = a.filter((x) => sg(x) > 0).reduce((n, x) => n + Number(x.balance), 0), liab = a.filter((x) => sg(x) < 0).reduce((n, x) => n + Number(x.balance), 0);
+  const ymd = (d) => `${mk(d)}-${String(d.getDate()).padStart(2, "0")}`, at = (x, ds) => { let b = 0; (x.history || []).forEach(([d, v]) => { if (d <= ds) b = v; }); return b; };
+  const pts = [...Array(6)].map((_, i) => { const d = i === 5 ? new Date() : new Date(new Date().getFullYear(), new Date().getMonth() - (4 - i), 0), ds = ymd(d); return a.reduce((n, x) => n + sg(x) * at(x, ds), 0); });
+  const lo = Math.min(...pts), hi = Math.max(...pts), X = (i) => 10 + i * 56, Y = (v) => 70 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * 55;
+  const byKind = Object.entries(a.filter((x) => sg(x) > 0).reduce((m, x) => ((m[x.kind] = (m[x.kind] || 0) + Number(x.balance)), m), {})).sort((p, q) => q[1] - p[1]);
+  const save = async (e) => { e.preventDefault(); try { await api("/accounts/", { method: "POST", body: f }); setF(null); load(); } catch (x) { alert(x.message); } };
+  return (<div><div className="stats"><div className="card stat"><span className="muted small">NET WORTH</span><b className={assets - liab >= 0 ? "inc" : "exp"}><Num v={fmt(assets - liab)} /></b></div>
+    <div className="card stat"><span className="muted small">ASSETS</span><b><Num v={fmt(assets)} /></b></div><div className="card stat"><span className="muted small">LIABILITIES</span><b className="exp"><Num v={fmt(liab)} /></b></div></div>
+    {a.length > 0 && <div className="charts"><div className="card"><b>Net worth · last 6 months</b><svg viewBox="0 0 290 90" width="100%"><polyline className="line" fill="none" stroke="var(--ac)" strokeWidth="3" strokeLinecap="round" points={pts.map((v, i) => `${X(i)},${Y(v)}`).join(" ")} />
+        {pts.map((v, i) => <circle key={i} cx={X(i)} cy={Y(v)} r="3.5" fill="var(--ac2)" />)}</svg><div className="muted small">Builds up as you update balances over time.</div></div>
+      <div className="card"><b>Where your assets are</b>{byKind.map(([k, v]) => <div className="bar" key={k}><span>{AK[k]}</span><div><i style={{ width: (v / byKind[0][1]) * 100 + "%" }} /></div><em>{fmt(v)}</em></div>)}</div></div>}
+    <div className="chips" style={{ marginTop: 14 }}>{AP.map(([i, n, k]) => <button key={n} className="chip" onClick={() => setF({ icon: i, name: n, kind: k, balance: "" })}>{i} {n}</button>)}<button className="chip on" onClick={() => setF({ icon: "🏦", name: "", kind: "BANK", balance: "" })}>＋ Custom</button></div>
+    {f && <form className="card row wrap" onSubmit={save}><input style={{ width: 60 }} value={f.icon} onChange={(e) => setF({ ...f, icon: e.target.value })} /><input placeholder="Account name" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} required />
+      <select value={f.kind} onChange={(e) => setF({ ...f, kind: e.target.value })}>{Object.entries(AK).map(([k, l]) => <option key={k} value={k}>{l}</option>)}</select>
+      <input type="number" step="0.01" min="0" placeholder={LIAB.includes(f.kind) ? "Amount owed" : "Balance"} value={f.balance} onChange={(e) => setF({ ...f, balance: e.target.value })} required /><button className="btn primary">Add account</button></form>}
+    <div className="grid">{a.map((x) => <div className="card" key={x.id}><div className="row sp"><b>{x.icon} {x.name}</b><span className="row"><span className="tag">{AK[x.kind]}</span><button className="icon-btn" onClick={() => api(`/accounts/${x.id}/`, { method: "DELETE" }).then(load)}>🗑</button></span></div>
+      <h2 className={sg(x) < 0 ? "exp" : ""} style={{ margin: "10px 0" }}>{sg(x) < 0 ? "−" : ""}{fmt(x.balance)}</h2>
+      <div className="row"><input type="number" step="0.01" min="0" placeholder="Update balance" value={ed[x.id] ?? ""} onChange={(e) => setEd({ ...ed, [x.id]: e.target.value })} />
+        <button className="btn" onClick={() => { if (ed[x.id] !== undefined && ed[x.id] !== "") api(`/accounts/${x.id}/`, { method: "PATCH", body: { balance: ed[x.id] } }).then(() => { setEd({ ...ed, [x.id]: "" }); load(); }).catch((e) => alert(e.message)); }}>Update</button></div></div>)}</div>
+    {a.length === 0 && <div className="empty"><div className="e-ic">🏦</div><h3>Track your net worth</h3><p className="muted">Add your bank, cash, investments and loans to see the full picture.</p></div>}</div>);
 }
