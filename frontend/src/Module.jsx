@@ -1,12 +1,12 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
-const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
+const SUBS = [["tx", "Transactions"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
-    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [sort, setSort] = useState("new"), [quick, setQuick] = useState("");
+    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState("");
   const load = () => api(`/${kind}/`).then(setItems);
-  useEffect(() => { load(); api(`/templates/${kind}/`).then(setTpls); }, []);
+  useEffect(() => { if (kind === "expenses") api("/recurring/run/", { method: "POST" }).finally(load); else load(); api(`/templates/${kind}/`).then(setTpls); }, []);
   const create = async (d) => { const b = { ...d }; Object.keys(b).forEach((k) => b[k] === "" && delete b[k]);
     if (kind === "expenses" && !b.date) b.date = now; await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); };
   const del = async (id) => { await api(`/${kind}/${id}/`, { method: "DELETE" }); load(); };
@@ -14,7 +14,10 @@ export default function Module({ kind }) {
   const check = async (id) => { await api(`/habits/${id}/check/`, { method: "POST" }); load(); };
   const openNew = () => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], f[3]]))); setModal("new"); };
   const [fk, fopts] = cfg.filter; const main = kind !== "expenses" || sub === "tx";
-  const shown = items.filter((i) => (flt === "ALL" || i[fk] === flt) && (i.name || i.title).toLowerCase().includes(q.toLowerCase()));
+  const mi = kind === "expenses" && mon !== "ALL" ? items.filter((x) => x.date.startsWith(mon)) : items;
+  const shiftMon = (n) => { const [y, m] = mon.split("-").map(Number), d = new Date(y, m - 1 + n, 1); setMon(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); };
+  const monLabel = mon === "ALL" ? "All time" : new Date(mon + "-01T00:00:00").toLocaleString("en", { month: "long", year: "numeric" });
+  const shown = mi.filter((i) => (flt === "ALL" || i[fk] === flt) && (i.name || i.title).toLowerCase().includes(q.toLowerCase()));
   const openEdit = (it) => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], it[f[0]] ?? ""]))); setModal("edit:" + it.id); };
   const submitForm = async (e) => { e.preventDefault();
     if (modal === "new") return create(form);
@@ -22,7 +25,7 @@ export default function Module({ kind }) {
     await patch(Number(modal.split(":")[1]), b); setModal(null); };
   const sorter = (a) => (sort === "streak" ? [...a].sort((x, y) => y.streak - x.streak) : sort === "name" ? [...a].sort((x, y) => x.name.localeCompare(y.name)) : a);
   const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}>🗑</button>;
-  const cats = kind === "expenses" ? Object.entries(items.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
+  const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
   return (<div>
     <div className="head"><div><h1>{cfg.icon} {cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
       {main && <div className="row"><button className="btn ghost" onClick={() => setModal("tpl")}>📋 Templates</button><button className="btn primary" onClick={openNew}>＋ New {cfg.noun}</button></div>}</div>
@@ -31,8 +34,11 @@ export default function Module({ kind }) {
     {kind === "expenses" && sub === "split" && <Splits />}
     {kind === "expenses" && sub === "emi" && <Emi />}
     {kind === "expenses" && sub === "budget" && <Budgets expenses={items} />}
+    {kind === "expenses" && sub === "recurring" && <Recurring reload={load} />}
     {main && <>
-    <div className="stats">{cfg.stats(items).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
+    {kind === "expenses" && <div className="row" style={{ marginBottom: 12 }}><button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(-1)}>‹</button><b style={{ minWidth: 150, textAlign: "center" }}>{monLabel}</b>
+      <button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(1)}>›</button><button className={"chip " + (mon === "ALL" ? "on" : "")} onClick={() => setMon(mon === "ALL" ? new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") : "ALL")}>{mon === "ALL" ? "Back to month view" : "All time"}</button></div>}
+    <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
     <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{o}</button>)}</div></div>
     {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
@@ -48,12 +54,13 @@ export default function Module({ kind }) {
     {kind === "todos" && <><Focus tasks={items} onDone={load} />
       <div className="row wrap"><input className="quick" placeholder="⚡ Quick add a task and press Enter" value={quick} onChange={(e) => setQuick(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && quick.trim()) { create({ title: quick.trim(), priority: "MEDIUM", status: "TODO" }); setQuick(""); } }} />
-        <div className="tabs" style={{ margin: 0 }}>{[["board", "Board"], ["list", "List"], ["today", "Today"]].map(([k, l]) => <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l}</button>)}</div></div></>}
-    {kind === "todos" && view !== "board" && <TaskList items={shown} view={view} patch={patch} del={del} openEdit={openEdit} />}
+        <div className="tabs" style={{ margin: 0 }}>{[["board", "Board"], ["list", "List"], ["today", "Today"], ["calendar", "Calendar"]].map(([k, l]) => <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l}</button>)}</div></div></>}
+    {kind === "todos" && view === "calendar" && <CalendarView items={shown} openEdit={openEdit} create={create} />}
+    {kind === "todos" && (view === "list" || view === "today") && <TaskList items={shown} view={view} patch={patch} del={del} openEdit={openEdit} />}
     {kind === "todos" && view === "board" && <div className="kanban">{COLS.map(([s, label], ci) => <div className="col" key={s} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("id"); if (id) patch(Number(id), { status: s }); }}><h3>{label} ({shown.filter((t) => t.status === s).length})</h3>
       {shown.filter((t) => t.status === s).map((t) => { const sb = t.subtasks || [];
         return <div className={"card task " + (s !== "DONE" && t.due_date && t.due_date < now ? "late" : "")} key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)}><b className="link" onClick={() => openEdit(t)}>{t.title}</b><div className="muted small">{t.description}</div>
-          <div className="tags"><span className={"tag p-" + t.priority}>{t.priority}</span>{t.due_date && <span className="tag">📅 {t.due_date}</span>}{t.tags && <span className="tag">#{t.tags}</span>}{t.focus_minutes > 0 && <span className="tag">⏱ {t.focus_minutes}m</span>}{sb.length > 0 && <span className="tag">{sb.filter((x) => x.done).length}/{sb.length}</span>}</div>
+          <div className="tags"><span className={"tag p-" + t.priority}>{t.priority}</span>{t.due_date && <span className="tag">📅 {t.due_date}</span>}{t.tags && <span className="tag">#{t.tags}</span>}{t.focus_minutes > 0 && <span className="tag">⏱ {t.focus_minutes}m</span>}{t.repeat && t.repeat !== "NONE" && <span className="tag">🔁 {t.repeat}</span>}{sb.length > 0 && <span className="tag">{sb.filter((x) => x.done).length}/{sb.length}</span>}</div>
           <div className="subs">{sb.map((x, i) => <label key={i}><input type="checkbox" checked={x.done} onChange={() => patch(t.id, { subtasks: sb.map((y, j) => (j === i ? { ...y, done: !y.done } : y)) })} /><span className={x.done ? "strike" : ""}>{x.t}</span></label>)}
             <input className="mini" placeholder="+ Add subtask" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { patch(t.id, { subtasks: [...sb, { t: e.target.value.trim(), done: false }] }); e.target.value = ""; } }} /></div>
           <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}>◀</button>{delBtn(t.id)}

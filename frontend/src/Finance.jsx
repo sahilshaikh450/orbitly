@@ -104,3 +104,29 @@ export function Budgets({ expenses }) {
         <div className="row sp small"><span>{fmt(s)} of {fmt(l)}</span><b style={{ color: col }}>{p >= 100 ? `Over by ${fmt(s - l)}` : `${fmt(l - s)} left`}</b></div></div>; })}</div>
     {b.length === 0 && <p className="muted center">No budgets yet. Pick a category and set a monthly limit.</p>}</div>);
 }
+
+const tdy = () => { const d = new Date(); return `${mk(d)}-${String(d.getDate()).padStart(2, "0")}`; };
+const RP = [["Rent", 12000, "EXPENSE", "HOME", "MONTHLY"], ["Netflix", 499, "EXPENSE", "ENTERTAINMENT", "MONTHLY"], ["Salary", 50000, "INCOME", "SALARY", "MONTHLY"], ["SIP", 5000, "EXPENSE", "INVEST", "MONTHLY"], ["Internet", 799, "EXPENSE", "BILLS", "MONTHLY"], ["Insurance", 12000, "EXPENSE", "HEALTH", "YEARLY"]];
+export function Recurring({ reload }) {
+  const [r, setR] = useState([]), [f, setF] = useState(null), [msg, setMsg] = useState("");
+  const load = () => api("/recurring/").then(setR); useEffect(() => { load(); }, []);
+  const mo = (x) => Number(x.amount) * (x.frequency === "WEEKLY" ? 52 / 12 : x.frequency === "YEARLY" ? 1 / 12 : 1);
+  const sum = (t) => r.filter((x) => x.active && x.type === t).reduce((n, x) => n + mo(x), 0);
+  const save = async (e) => { e.preventDefault(); await api("/recurring/", { method: "POST", body: f }); setF(null); load(); };
+  const run = async () => { const x = await api("/recurring/run/", { method: "POST" }); setMsg(`${x.created} transaction(s) added`); reload(); load(); };
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
+  return (<div><div className="stats"><div className="card stat"><span className="muted small">MONTHLY INCOME</span><b className="inc">{fmt(sum("INCOME"))}</b></div>
+    <div className="card stat"><span className="muted small">MONTHLY BILLS</span><b className="exp">{fmt(sum("EXPENSE"))}</b></div><div className="card stat"><span className="muted small">NET</span><b>{fmt(sum("INCOME") - sum("EXPENSE"))}</b></div></div>
+    <p className="muted small">Recurring items are added to your transactions automatically when they fall due.</p>
+    <div className="chips">{RP.map(([t, a, ty, c, fr]) => <button key={t} className="chip" onClick={() => setF({ title: t, amount: a, type: ty, category: c, payment_method: "UPI", frequency: fr, next_date: tdy() })}>{t}</button>)}
+      <button className="chip on" onClick={() => setF({ title: "", amount: "", type: "EXPENSE", category: "BILLS", payment_method: "UPI", frequency: "MONTHLY", next_date: tdy() })}>＋ Custom</button>
+      <button className="chip" onClick={run}>↻ Run due now</button>{msg && <span className="muted small">{msg}</span>}</div>
+    {f && <form className="card row wrap" onSubmit={save}><input placeholder="Title" value={f.title} onChange={set("title")} required /><input type="number" placeholder="Amount" value={f.amount} onChange={set("amount")} required />
+      <select value={f.type} onChange={set("type")}><option>EXPENSE</option><option>INCOME</option></select><select value={f.category} onChange={set("category")}>{[...CATS, "SALARY"].map((c) => <option key={c}>{c}</option>)}</select>
+      <select value={f.frequency} onChange={set("frequency")}>{["WEEKLY", "MONTHLY", "YEARLY"].map((c) => <option key={c}>{c}</option>)}</select><input type="date" value={f.next_date} onChange={set("next_date")} /><button className="btn primary">Save</button></form>}
+    <div className="list">{r.map((x) => <div className="card rowi" key={x.id} style={{ opacity: x.active ? 1 : 0.5 }}><div className="grow"><b>🔁 {x.title}</b><div className="muted small">Next: {x.next_date} · {x.category}</div></div>
+      <span className="tag">{x.frequency}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{fmt(x.amount)}</b>
+      <button className="chip" onClick={() => api(`/recurring/${x.id}/`, { method: "PATCH", body: { active: !x.active } }).then(load)}>{x.active ? "Pause" : "Resume"}</button>
+      <button className="icon-btn" onClick={() => api(`/recurring/${x.id}/`, { method: "DELETE" }).then(load)}>🗑</button></div>)}</div>
+    {r.length === 0 && <p className="muted center">No recurring items yet. Pick a preset above.</p>}</div>);
+}

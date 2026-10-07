@@ -1,3 +1,4 @@
+import calendar
 from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib.auth import authenticate, get_user_model
@@ -6,9 +7,16 @@ from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Activity, Profile
+from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
+
+def advance(d, freq):
+    if freq == "DAILY": return d + timedelta(days=1)
+    if freq == "WEEKLY": return d + timedelta(days=7)
+    y, m = d.year + (1 if freq == "YEARLY" else 0), d.month + (1 if freq == "MONTHLY" else 0)
+    if m > 12: m, y = 1, y + 1
+    return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
 
 def log(user, kind, text): Activity.objects.create(user=user, kind=kind, text=text[:200])
 
@@ -46,7 +54,13 @@ class TodoViewSet(Own):
         return Response(self.get_serializer(t).data)
     def perform_update(self, s):
         old = self.get_object().status; o = s.save()
-        if o.status == "DONE" and old != "DONE": log(o.user, "TASK", f"Completed task {o.title}")
+        if o.status == "DONE" and old != "DONE":
+            log(o.user, "TASK", f"Completed task {o.title}")
+            if o.repeat != "NONE":
+                nd = advance(o.due_date or date.today(), o.repeat)
+                while nd < date.today(): nd = advance(nd, o.repeat)
+                Todo.objects.create(user=o.user, title=o.title, description=o.description, priority=o.priority, status="TODO", due_date=nd,
+                    tags=o.tags, repeat=o.repeat, subtasks=[{**x, "done": False} for x in o.subtasks])
 
 class GoalViewSet(Own):
     queryset = Goal.objects.all(); serializer_class = GoalSerializer
@@ -61,6 +75,20 @@ class GoalViewSet(Own):
 class SplitViewSet(Own):
     queryset = Split.objects.all(); serializer_class = SplitSerializer
     def after_create(self, o): log(o.user, "SPLIT", f"Split {o.title} ({o.total}) with {len(o.members) - 1} people")
+
+class RecurringViewSet(Own):
+    queryset = Recurring.objects.all(); serializer_class = RecurringSerializer
+
+@api_view(["POST"])
+def run_recurring(request):
+    n = 0
+    for r in Recurring.objects.filter(user=request.user, active=True):
+        c = 0
+        while r.next_date <= date.today() and c < 24:
+            Expense.objects.create(user=r.user, title=r.title, amount=r.amount, type=r.type, category=r.category, payment_method=r.payment_method, date=r.next_date)
+            r.next_date = advance(r.next_date, r.frequency); c += 1; n += 1
+        r.save()
+    return Response({"created": n})
 
 class BudgetViewSet(Own):
     queryset = Budget.objects.all(); serializer_class = BudgetSerializer

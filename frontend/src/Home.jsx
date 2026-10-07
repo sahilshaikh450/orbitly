@@ -10,6 +10,16 @@ export default function Home({ name, go }) {
   const doneH = d.h.filter((x) => x.done_today).length, due = d.t.filter((t) => t.status !== "DONE" && t.due_date && t.due_date <= today);
   const sum = (ty) => d.e.filter((x) => x.type === ty && x.date.startsWith(month)).reduce((n, x) => n + Number(x.amount), 0);
   const inc = sum("INCOME"), exp = sum("EXPENSE");
+  const lm = ymd(new Date(now.getFullYear(), now.getMonth() - 1, 1)).slice(0, 7), wk = ymd(new Date(now.getTime() - 6 * 864e5));
+  const expLast = d.e.filter((x) => x.type === "EXPENSE" && x.date.startsWith(lm)).reduce((n, x) => n + Number(x.amount), 0), catM = {};
+  d.e.filter((x) => x.type === "EXPENSE" && x.date.startsWith(month)).forEach((x) => { catM[x.category] = (catM[x.category] || 0) + Number(x.amount); });
+  const top = Object.entries(catM).sort((a, b) => b[1] - a[1])[0], best = [...d.h].sort((a, b) => b.rate30 - a.rate30)[0];
+  const wkItems = d.p.items.filter((i) => i.date >= wk && i.text.startsWith("Completed")), ins = [];
+  if (expLast > 0) ins.push(`${exp > expLast ? "📈" : "📉"} Spending is ${Math.abs(Math.round(((exp - expLast) * 100) / expLast))}% ${exp > expLast ? "higher" : "lower"} than last month`);
+  if (top) ins.push(`🏷️ Top spending category this month: ${top[0]} (${C}${Math.round(top[1])})`);
+  if (inc > 0) ins.push(`💰 Savings rate this month: ${Math.round(((inc - exp) * 100) / inc)}%`);
+  ins.push(`✅ ${wkItems.filter((i) => i.kind === "TASK").length} tasks and ${wkItems.filter((i) => i.kind === "HABIT").length} habit check-ins in the last 7 days`);
+  if (best && best.rate30 > 0) ins.push(`🏅 Most consistent habit: ${best.name} (${best.rate30}% over 30 days)`);
   return (<div><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} 👋</h1>
     <p className="muted">“{Q[now.getDate() % Q.length]}”</p></div></div>
     <div className="stats">
@@ -17,6 +27,7 @@ export default function Home({ name, go }) {
       <div className="card stat"><span className="muted small">TASKS DUE</span><b>{due.length}</b></div>
       <div className="card stat"><span className="muted small">MONTH BALANCE</span><b className={inc - exp >= 0 ? "inc" : "exp"}>{C}{Math.round(inc - exp)}</b></div>
       <div className="card stat"><span className="muted small">CURRENT STREAK</span><b>{d.p.current_streak} 🔥</b></div></div>
+    <div className="card"><b>✨ Insights</b>{ins.map((t, i) => <div className="act" key={i}>{t}</div>)}</div>
     <div className="dash">
       <div className="card"><div className="row sp"><b>Today's habits</b><a onClick={() => go("habits")}>Open</a></div>
         {d.h.length === 0 && <p className="muted">No habits yet.</p>}

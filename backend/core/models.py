@@ -35,6 +35,7 @@ class Todo(models.Model):
     tags = models.CharField(max_length=120, blank=True)
     subtasks = models.JSONField(default=list, blank=True)
     focus_minutes = models.IntegerField(default=0)
+    repeat = models.CharField(max_length=8, default="NONE")
 
 import datetime
 class Goal(models.Model):
@@ -70,3 +71,14 @@ class Budget(models.Model):
     user = models.ForeignKey(U, on_delete=models.CASCADE)
     category = models.CharField(max_length=20)
     limit = models.DecimalField(max_digits=12, decimal_places=2)
+
+class Recurring(models.Model):
+    user = models.ForeignKey(U, on_delete=models.CASCADE)
+    title = models.CharField(max_length=120)
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    type = models.CharField(max_length=10, default="EXPENSE")
+    category = models.CharField(max_length=20, default="BILLS")
+    payment_method = models.CharField(max_length=10, default="UPI")
+    frequency = models.CharField(max_length=10, default="MONTHLY")
+    next_date = models.DateField(default=datetime.date.today)
+    active = models.BooleanField(default=True)

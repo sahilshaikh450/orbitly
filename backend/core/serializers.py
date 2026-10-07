@@ -1,6 +1,6 @@
 from datetime import date, timedelta
 from rest_framework import serializers
-from .models import Habit, Expense, Todo, Goal, Split, Budget
+from .models import Habit, Expense, Todo, Goal, Split, Budget, Recurring
 
 class HabitSerializer(serializers.ModelSerializer):
     streak = serializers.SerializerMethodField()
@@ -39,4 +39,4 @@ def make(model):
             fields = "__all__"; read_only_fields = ["user"]
     S.Meta.model = model
     return S
-ExpenseSerializer, TodoSerializer, GoalSerializer, SplitSerializer, BudgetSerializer = make(Expense), make(Todo), make(Goal), make(Split), make(Budget)
+ExpenseSerializer, TodoSerializer, GoalSerializer, SplitSerializer, BudgetSerializer, RecurringSerializer = make(Expense), make(Todo), make(Goal), make(Split), make(Budget), make(Recurring)
