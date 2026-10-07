@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config"; import { Num, Ring, Skel, confetti } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config"; import { Num, Ring, Skel, confetti, sIc } from "./Extras";
 const Q = ["Small steps every day.", "Discipline beats motivation.", "Done is better than perfect.", "You are what you repeatedly do.", "Progress, not perfection.", "Start where you are.", "Consistency compounds."];
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 export default function Home({ name, go }) {
@@ -31,10 +31,10 @@ export default function Home({ name, go }) {
       <p className="muted">{doneH}/{d.h.length} habits · {doneT} tasks done · {due.length} still due</p></div></div>
     {atRisk && <div className="card tip warn">🔥 Your {d.p.current_streak}-day streak ends tonight! Complete one habit or task to keep it alive.</div>}
     <div className="stats">
-      <div className="card stat"><span className="muted small">HABITS TODAY</span><b><Num v={doneH + "/" + d.h.length} /></b><div className="prog"><i style={{ width: (d.h.length ? (doneH / d.h.length) * 100 : 0) + "%" }} /></div></div>
-      <div className="card stat"><span className="muted small">TASKS DUE</span><b><Num v={due.length} /></b></div>
-      <div className="card stat"><span className="muted small">MONTH BALANCE</span><b className={inc - exp >= 0 ? "inc" : "exp"}><Num v={C + Math.round(inc - exp)} /></b></div>
-      <div className="card stat"><span className="muted small">CURRENT STREAK</span><b><Num v={d.p.current_streak + " 🔥"} /></b></div></div>
+      <div className="card stat"><i className="si">{sIc("HABITS TODAY")}</i><span className="muted small">HABITS TODAY</span><b><Num v={doneH + "/" + d.h.length} /></b><div className="prog"><i style={{ width: (d.h.length ? (doneH / d.h.length) * 100 : 0) + "%" }} /></div></div>
+      <div className="card stat"><i className="si">{sIc("TASKS DUE")}</i><span className="muted small">TASKS DUE</span><b><Num v={due.length} /></b></div>
+      <div className="card stat"><i className="si">{sIc("MONTH BALANCE")}</i><span className="muted small">MONTH BALANCE</span><b className={inc - exp >= 0 ? "inc" : "exp"}><Num v={C + Math.round(inc - exp)} /></b></div>
+      <div className="card stat"><i className="si">{sIc("CURRENT STREAK")}</i><span className="muted small">CURRENT STREAK</span><b><Num v={d.p.current_streak + " 🔥"} /></b></div></div>
     <div className="card"><b>✨ Insights</b>{ins.map((t, i) => <div className="act" key={i}>{t}</div>)}</div>
     <div className="dash">
       <div className="card"><div className="row sp"><b>Today's habits</b><a onClick={() => go("habits")}>Open</a></div>

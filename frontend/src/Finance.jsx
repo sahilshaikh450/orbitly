@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config"; import { Num } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { cur } from "./config"; import { Num, sIc } from "./Extras";
 const fmt = (n) => cur() + Math.round(n).toLocaleString("en-IN");
 const PRESETS = [["🛟", "Emergency Fund", "EMERGENCY"], ["🏖️", "Vacation", "SAVING"], ["💻", "New Laptop", "SAVING"], ["🏠", "Down Payment", "SAVING"], ["🎓", "Education", "SAVING"], ["💍", "Wedding", "SAVING"]];
 function GoalCard({ g, onAdd, onDel }) {
@@ -19,8 +19,8 @@ export function Goals({ expenses }) {
   const create = async (d) => { await api("/goals/", { method: "POST", body: { ...d, deadline: d.deadline || null, saved: d.saved || 0 } }); setF(null); load(); };
   const tS = g.reduce((n, x) => n + Number(x.saved), 0), tT = g.reduce((n, x) => n + Number(x.target), 0);
   return (<div>
-    <div className="stats"><div className="card stat"><span className="muted small">TOTAL SAVED</span><b>{fmt(tS)}</b></div><div className="card stat"><span className="muted small">TOTAL TARGET</span><b>{fmt(tT)}</b></div>
-      <div className="card stat"><span className="muted small">GOALS</span><b>{g.length}</b></div></div>
+    <div className="stats"><div className="card stat"><i className="si">{sIc("TOTAL SAVED")}</i><span className="muted small">TOTAL SAVED</span><b>{fmt(tS)}</b></div><div className="card stat"><i className="si">{sIc("TOTAL TARGET")}</i><span className="muted small">TOTAL TARGET</span><b>{fmt(tT)}</b></div>
+      <div className="card stat"><i className="si">{sIc("GOALS")}</i><span className="muted small">GOALS</span><b>{g.length}</b></div></div>
     {avg > 0 && <div className="card tip">🛟 Suggested emergency fund: <b>{fmt(avg * 6)}</b> <span className="muted">(6 × your average monthly spend of {fmt(avg)})</span>
       <button className="btn" onClick={() => create({ name: "Emergency Fund", icon: "🛟", kind: "EMERGENCY", target: Math.round(avg * 6) })}>Create goal</button></div>}
     <div className="chips">{PRESETS.map(([i, n, k]) => <button key={n} className="chip" onClick={() => setF({ icon: i, name: n, kind: k, target: "", saved: "", deadline: "" })}>{i} {n}</button>)}
@@ -44,7 +44,7 @@ export function Splits() {
     else { const me = x.members.find((m) => m.name === "You"); if (me && !me.settled) net[x.paid_by] = (net[x.paid_by] || 0) - sh; } });
   const owed = Object.values(net).filter((v) => v > 0).reduce((a, b) => a + b, 0), owe = -Object.values(net).filter((v) => v < 0).reduce((a, b) => a + b, 0);
   return (<div>
-    <div className="stats"><div className="card stat"><span className="muted small">YOU ARE OWED</span><b className="inc">{fmt(owed)}</b></div><div className="card stat"><span className="muted small">YOU OWE</span><b className="exp">{fmt(owe)}</b></div></div>
+    <div className="stats"><div className="card stat"><i className="si">{sIc("YOU ARE OWED")}</i><span className="muted small">YOU ARE OWED</span><b className="inc">{fmt(owed)}</b></div><div className="card stat"><i className="si">{sIc("YOU OWE")}</i><span className="muted small">YOU OWE</span><b className="exp">{fmt(owe)}</b></div></div>
     {Object.keys(net).length > 0 && <div className="chips">{Object.entries(net).map(([n, v]) => <span className="chip on" key={n}>{n}: {v > 0 ? "owes you " : "you owe "}{fmt(Math.abs(v))}</span>)}</div>}
     <form className="card row wrap" onSubmit={create}><input placeholder="What was it for? (Dinner, Trip...)" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} required />
       <input type="number" placeholder="Total amount" value={f.total} onChange={(e) => setF({ ...f, total: e.target.value })} required />
@@ -103,7 +103,7 @@ export function Trend({ items, reload }) {
   const max = Math.max(1, ...data.flatMap((x) => [x[1], x[2]]));
   const csv = () => { const rows = [["title", "amount", "type", "category", "payment_method", "date"], ...items.map((x) => [/^[=+\-@]/.test(x.title) ? "'" + x.title : x.title, x.amount, x.type, x.category, x.payment_method, x.date])];
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([rows.map((r) => r.map((c) => `"${c}"`).join(",")).join("\n")], { type: "text/csv" })); a.download = "transactions.csv"; a.click(); };
-  return (<div className="card"><div className="row sp"><b>Last 6 months</b><div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense <button className="btn" onClick={csv}>⬇ CSV</button><label className="btn" style={{ cursor: "pointer" }}>⬆ Import<input type="file" accept=".csv,text/csv" hidden onChange={imp} /></label></div></div>
+  return (<div className="card"><div className="row sp"><b>📊 Last 6 months</b><div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense <button className="btn" onClick={csv}>⬇ CSV</button><label className="btn" style={{ cursor: "pointer" }}>⬆ Import<input type="file" accept=".csv,text/csv" hidden onChange={imp} /></label></div></div>
     <div className="tr">{data.map(([m, i, e]) => <div key={m}><div className="pair"><i className="gi" style={{ height: (i / max) * 80 + 2 }} title={fmt(i)} /><i className="ri" style={{ height: (e / max) * 80 + 2 }} title={fmt(e)} /></div>{m}</div>)}</div></div>);
 }
 export function Budgets({ expenses }) {
@@ -113,8 +113,8 @@ export function Budgets({ expenses }) {
   const save = async (e) => { e.preventDefault(); const ex = b.find((x) => x.category === f.category);
     await api(ex ? `/budgets/${ex.id}/` : "/budgets/", { method: ex ? "PATCH" : "POST", body: f }); setF({ ...f, limit: "" }); load(); };
   const tL = b.reduce((n, x) => n + Number(x.limit), 0), tS = b.reduce((n, x) => n + spent(x.category), 0);
-  return (<div><div className="stats"><div className="card stat"><span className="muted small">MONTHLY BUDGET</span><b>{fmt(tL)}</b></div><div className="card stat"><span className="muted small">SPENT</span><b>{fmt(tS)}</b></div>
-    <div className="card stat"><span className="muted small">REMAINING</span><b className={tL - tS >= 0 ? "inc" : "exp"}>{fmt(tL - tS)}</b></div></div>
+  return (<div><div className="stats"><div className="card stat"><i className="si">{sIc("MONTHLY BUDGET")}</i><span className="muted small">MONTHLY BUDGET</span><b>{fmt(tL)}</b></div><div className="card stat"><i className="si">{sIc("SPENT")}</i><span className="muted small">SPENT</span><b>{fmt(tS)}</b></div>
+    <div className="card stat"><i className="si">{sIc("REMAINING")}</i><span className="muted small">REMAINING</span><b className={tL - tS >= 0 ? "inc" : "exp"}>{fmt(tL - tS)}</b></div></div>
     <form className="card row wrap" onSubmit={save}><select style={{ width: 180 }} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })}>{CATS.map((c) => <option key={c}>{c}</option>)}</select>
       <input type="number" placeholder="Monthly limit" value={f.limit} onChange={(e) => setF({ ...f, limit: e.target.value })} required /><button className="btn primary">Set budget</button></form>
     <div className="grid">{b.map((x) => { const s = spent(x.category), l = Number(x.limit), p = Math.round((s / l) * 100), col = p >= 100 ? "#ef4444" : p >= 75 ? "#f59e0b" : "#10b981";
@@ -134,8 +134,8 @@ export function Recurring({ reload }) {
   const save = async (e) => { e.preventDefault(); await api("/recurring/", { method: "POST", body: f }); setF(null); load(); };
   const run = async () => { const x = await api("/recurring/run/", { method: "POST" }); setMsg(`${x.created} transaction(s) added`); reload(); load(); };
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value });
-  return (<div><div className="stats"><div className="card stat"><span className="muted small">MONTHLY INCOME</span><b className="inc">{fmt(sum("INCOME"))}</b></div>
-    <div className="card stat"><span className="muted small">MONTHLY BILLS</span><b className="exp">{fmt(sum("EXPENSE"))}</b></div><div className="card stat"><span className="muted small">NET</span><b>{fmt(sum("INCOME") - sum("EXPENSE"))}</b></div></div>
+  return (<div><div className="stats"><div className="card stat"><i className="si">{sIc("MONTHLY INCOME")}</i><span className="muted small">MONTHLY INCOME</span><b className="inc">{fmt(sum("INCOME"))}</b></div>
+    <div className="card stat"><i className="si">{sIc("MONTHLY BILLS")}</i><span className="muted small">MONTHLY BILLS</span><b className="exp">{fmt(sum("EXPENSE"))}</b></div><div className="card stat"><i className="si">{sIc("NET")}</i><span className="muted small">NET</span><b>{fmt(sum("INCOME") - sum("EXPENSE"))}</b></div></div>
     <p className="muted small">Recurring items are added to your transactions automatically when they fall due.</p>
     <div className="chips">{RP.map(([t, a, ty, c, fr]) => <button key={t} className="chip" onClick={() => setF({ title: t, amount: a, type: ty, category: c, payment_method: "UPI", frequency: fr, next_date: tdy() })}>{t}</button>)}
       <button className="chip on" onClick={() => setF({ title: "", amount: "", type: "EXPENSE", category: "BILLS", payment_method: "UPI", frequency: "MONTHLY", next_date: tdy() })}>＋ Custom</button>
@@ -161,8 +161,8 @@ export function Accounts() {
   const lo = Math.min(...pts), hi = Math.max(...pts), X = (i) => 10 + i * 56, Y = (v) => 70 - (hi === lo ? 0.5 : (v - lo) / (hi - lo)) * 55;
   const byKind = Object.entries(a.filter((x) => sg(x) > 0).reduce((m, x) => ((m[x.kind] = (m[x.kind] || 0) + Number(x.balance)), m), {})).sort((p, q) => q[1] - p[1]);
   const save = async (e) => { e.preventDefault(); try { await api("/accounts/", { method: "POST", body: f }); setF(null); load(); } catch (x) { alert(x.message); } };
-  return (<div><div className="stats"><div className="card stat"><span className="muted small">NET WORTH</span><b className={assets - liab >= 0 ? "inc" : "exp"}><Num v={fmt(assets - liab)} /></b></div>
-    <div className="card stat"><span className="muted small">ASSETS</span><b><Num v={fmt(assets)} /></b></div><div className="card stat"><span className="muted small">LIABILITIES</span><b className="exp"><Num v={fmt(liab)} /></b></div></div>
+  return (<div><div className="stats"><div className="card stat"><i className="si">{sIc("NET WORTH")}</i><span className="muted small">NET WORTH</span><b className={assets - liab >= 0 ? "inc" : "exp"}><Num v={fmt(assets - liab)} /></b></div>
+    <div className="card stat"><i className="si">{sIc("ASSETS")}</i><span className="muted small">ASSETS</span><b><Num v={fmt(assets)} /></b></div><div className="card stat"><i className="si">{sIc("LIABILITIES")}</i><span className="muted small">LIABILITIES</span><b className="exp"><Num v={fmt(liab)} /></b></div></div>
     {a.length > 0 && <div className="charts"><div className="card"><b>Net worth · last 6 months</b><svg viewBox="0 0 290 90" width="100%"><polyline className="line" fill="none" stroke="var(--ac)" strokeWidth="3" strokeLinecap="round" points={pts.map((v, i) => `${X(i)},${Y(v)}`).join(" ")} />
         {pts.map((v, i) => <circle key={i} cx={X(i)} cy={Y(v)} r="3.5" fill="var(--ac2)" />)}</svg><div className="muted small">Builds up as you update balances over time.</div></div>
       <div className="card"><b>Where your assets are</b>{byKind.map(([k, v]) => <div className="bar" key={k}><span>{AK[k]}</span><div><i style={{ width: (v / byKind[0][1]) * 100 + "%" }} /></div><em>{fmt(v)}</em></div>)}</div></div>}

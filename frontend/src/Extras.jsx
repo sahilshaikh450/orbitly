@@ -5,7 +5,7 @@ const PRI = { URGENT: 0, HIGH: 1, MEDIUM: 2, LOW: 3 };
 export function WeekChart({ items }) {
   const days = [...Array(7)].map((_, i) => { const d = new Date(); d.setDate(d.getDate() - (6 - i)); return DN[d.getDay()]; });
   const counts = days.map((_, i) => items.filter((h) => h.week[i]).length), max = Math.max(1, items.length), today = counts[6];
-  return (<div className="card"><div className="row sp"><b>This week</b><span className="muted small">Today: {today}/{items.length} done</span></div>
+  return (<div className="card"><div className="row sp"><b>📅 This week</b><span className="muted small">Today: {today}/{items.length} done</span></div>
     <div className="wbars">{counts.map((c, i) => <div key={i}><i style={{ height: (c / max) * 70 + 4 }} /><span>{days[i]}</span><em>{c}</em></div>)}</div></div>);
 }
 export function HabitDetail({ h, onToggle, onClose }) {
@@ -16,7 +16,7 @@ export function HabitDetail({ h, onToggle, onClose }) {
   return (<div className="overlay" onClick={onClose}><div className="modal" onClick={(e) => e.stopPropagation()}>
     <div className="row sp"><h2>{h.icon} {h.name}</h2><button className="icon-btn" onClick={onClose}>✕</button></div><p className="muted">{h.description}</p>
     <div className="stats">{[["Streak", h.streak + " 🔥"], ["Best", h.best], ["30-day rate", h.rate30 + "%"], ["Total", h.total]].map(([l, v]) =>
-      <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
+      <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
     <div className="card"><b>Last 17 weeks</b><span className="muted small"> · click a day to mark or unmark it</span>
       <div className="heatwrap"><div className="heat">{weeks.map((w, i) => <div className="wk" key={i}><span className="mo">{w[0].getDate() <= 7 ? MN[w[0].getMonth()] : ""}</span>
         {w.map((x) => { const k = ymd(x); return <i key={k} className={set.has(k) ? "c3" : ""} title={k} onClick={() => onToggle(k)} />; })}</div>)}</div></div></div></div></div>);
@@ -95,3 +95,11 @@ export const level = (n) => { const l = Math.floor(Math.sqrt(n / 5)) + 1, lo = 5
   return { l, pct: Math.round(((n - lo) / (hi - lo)) * 100), left: hi - n, name: ["Novice", "Explorer", "Achiever", "Pro", "Master", "Legend"][Math.min(5, Math.floor((l - 1) / 2))] }; };
 
 export const undoable = (msg, fn) => window.dispatchEvent(new CustomEvent("undo", { detail: { msg, fn } }));
+
+const SI = { TOTAL: "📊", "DONE TODAY": "✅", "BEST STREAK": "🔥", COMPLETION: "🎯", INCOME: "💵", EXPENSE: "💸", BALANCE: "💰", ENTRIES: "🧾", DONE: "✅", OVERDUE: "⏰", PROGRESS: "📈", "TOTAL SAVED": "🏦", "TOTAL TARGET": "🎯", GOALS: "🏁",
+  "YOU ARE OWED": "🤝", "YOU OWE": "💳", "MONTHLY INCOME": "💵", "MONTHLY BILLS": "🧾", NET: "⚖️", "MONTHLY BUDGET": "📅", SPENT: "💸", REMAINING: "🪙", "NET WORTH": "💎", ASSETS: "🏦", LIABILITIES: "📉",
+  "CURRENT STREAK": "🔥", "LONGEST STREAK": "🏆", "TOTAL ACTIVITIES": "⚡", "ACTIVE DAYS": "📅", "HABITS TODAY": "💪", "TASKS DUE": "⏰", "MONTH BALANCE": "💰", "WRITING STREAK": "🔥", "30-DAY MOOD": "😊", "THIS WEEK": "📆",
+  "AVG / DAY": "📉", "SAVINGS RATE": "🐷", STREAK: "🔥", BEST: "🏆", "30-DAY RATE": "🎯" };
+export const sIc = (l) => SI[String(l).toUpperCase()] || "✨";
+export const CI = { ALL: "✨", HEALTH: "❤️", FITNESS: "🏋️", MINDFULNESS: "🧘", LEARNING: "📚", PRODUCTIVITY: "⚡", SOCIAL: "👥", FINANCE: "💳", CREATIVITY: "🎨", OTHER: "📌",
+  INCOME: "💵", EXPENSE: "💸", FOOD: "🍔", HOME: "🏠", BILLS: "🧾", TRAVEL: "🚗", SHOPPING: "🛍️", ENTERTAINMENT: "🎬", INVEST: "📈", SALARY: "💼", LOW: "🟢", MEDIUM: "🔵", HIGH: "🟠", URGENT: "🔴" };

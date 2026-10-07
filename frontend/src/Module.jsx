@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring, Accounts } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti, undoable } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring, Accounts } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti, undoable, sIc, CI } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
 const SUBS = [["tx", "Transactions"], ["accounts", "Accounts"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
@@ -28,7 +28,7 @@ export default function Module({ kind }) {
   const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}>🗑</button>;
   const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
   return (<div>
-    <div className="head"><div><h1>{cfg.icon} {cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
+    <div className="head"><div><h1><span className="h-ic">{cfg.icon}</span>{cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
       {main && <div className="row"><button className="btn ghost" onClick={() => setModal("tpl")}>📋 Templates</button><button className="btn primary" onClick={openNew}>＋ New {cfg.noun}</button></div>}</div>
     {kind === "expenses" && <div className="tabs">{SUBS.map(([k, l]) => <button key={k} className={sub === k ? "on" : ""} onClick={() => setSub(k)}>{l}</button>)}</div>}
     {kind === "expenses" && sub === "goals" && <Goals expenses={items} />}
@@ -41,19 +41,19 @@ export default function Module({ kind }) {
     {main && loaded && <>
     {kind === "expenses" && <div className="row" style={{ marginBottom: 12 }}><button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(-1)}>‹</button><b style={{ minWidth: 150, textAlign: "center" }}>{monLabel}</b>
       <button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(1)}>›</button><button className={"chip " + (mon === "ALL" ? "on" : "")} onClick={() => setMon(mon === "ALL" ? new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") : "ALL")}>{mon === "ALL" ? "Back to month view" : "All time"}</button></div>}
-    <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
+    <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{o}</button>)}</div></div>
+      <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{CI[o] || ""} {o}</button>)}</div></div>
     {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
     {kind === "habits" && <div className="grid">{sorter(shown).map((h) => <div className="card habit" key={h.id}>
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
-        <div className="tags"><span className="tag">{h.frequency}</span><span className="tag">{h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span></div>
+        <div className="tags"><span className="tag">📅 {h.frequency}</span><span className="tag">{CI[h.category] || "📌"} {h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span></div>
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
-      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
+      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>🥧 Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
       <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
-        <span className="tag">{x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{x.amount}</b>{delBtn(x.id)}</div>)}</div></>}
+        <span className="tag">{CI[x.category] || "📌"} {x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{x.amount}</b>{delBtn(x.id)}</div>)}</div></>}
     {kind === "todos" && <><Focus tasks={items} onDone={load} />
       <div className="row wrap"><input className="quick" placeholder="⚡ Quick add a task and press Enter" value={quick} onChange={(e) => setQuick(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && quick.trim()) { create({ title: quick.trim(), priority: "MEDIUM", status: "TODO" }); setQuick(""); } }} />

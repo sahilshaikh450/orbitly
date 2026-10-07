@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { Num, Skel } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { Num, Skel, sIc } from "./Extras";
 const MOODS = [["😞", "Awful"], ["😕", "Low"], ["😐", "Okay"], ["🙂", "Good"], ["😄", "Great"]], COL = ["#ef4444", "#fb923c", "#facc15", "#34d399", "#10b981"];
 const PROMPTS = ["What are you grateful for today?", "What was the highlight of your day?", "What drained your energy today?", "What did you learn today?", "What would make tomorrow great?"];
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
@@ -18,9 +18,9 @@ export default function Journal() {
   const hc = {}; acts.forEach((a) => { if (a.kind === "HABIT" && a.text.startsWith("Completed")) hc[a.date] = (hc[a.date] || 0) + 1; });
   const hi = list.filter((e) => (hc[e.date] || 0) >= 2), lo = list.filter((e) => (hc[e.date] || 0) < 2);
   const shown = list.filter((e) => (e.text + e.tags).toLowerCase().includes(q.toLowerCase()));
-  return (<div><div className="head"><div><h1>📓 Journal &amp; Mood</h1><p className="muted">Reflect daily. Spot what lifts your mood.</p></div></div>
+  return (<div><div className="head"><div><h1><span className="h-ic">📓</span>Journal &amp; Mood</h1><p className="muted">Reflect daily. Spot what lifts your mood.</p></div></div>
     <div className="stats">{[["Entries", list.length], ["Writing streak", streak + " 🔥"], ["30-day mood", avg(rec) ? avg(rec).toFixed(1) + " / 5" : "—"], ["This week", list.filter((e) => e.date >= ymd(new Date(Date.now() - 6 * 864e5))).length + " entries"]].map(([l, v]) =>
-      <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
+      <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     {hi.length >= 2 && lo.length >= 2 && <div className="card tip">💡 On days you complete 2+ habits your mood averages <b>{avg(hi).toFixed(1)}</b> vs <b>{avg(lo).toFixed(1)}</b> on other days.</div>}
     <form className="card" onSubmit={save}><div className="row sp wrap"><b>How was your day?</b><input type="date" style={{ width: 170 }} max={today} value={day} onChange={(e) => e.target.value && setDay(e.target.value)} /></div>
       <div className="moods">{MOODS.map(([em, l], i) => <button type="button" key={l} className={"mood-btn " + (f.mood === i + 1 ? "on" : "")} onClick={() => setF({ ...f, mood: i + 1 })}>{em}<small>{l}</small></button>)}</div>

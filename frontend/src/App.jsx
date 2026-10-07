@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import Auth from "./Auth.jsx"; import Module from "./Module.jsx"; import Home from "./Home.jsx"; import Journal from "./Journal.jsx"; import Analytics from "./Analytics.jsx"; import Palette from "./Palette.jsx";
 import { Profile, Settings } from "./Profile.jsx"; import { api } from "./api"; import { startReminders } from "./reminders"; import { level, confetti } from "./Extras";
 const NAV = [["Overview", [["home", "🏠", "Dashboard"]]], ["Track", [["habits", "💪", "Habit Forge"], ["expenses", "💰", "Wealth Map"], ["todos", "✅", "Task Engine"]]], ["Reflect", [["journal", "📓", "Journal"], ["analytics", "📊", "Analytics"]]]];
-const TITLES = { home: "Dashboard", habits: "Habit Forge", expenses: "Wealth Map", todos: "Task Engine", journal: "Journal", analytics: "Analytics", profile: "Profile", settings: "Settings" };
 const FAB = [["✅", "Task", "task "], ["💪", "Habit", "habit "], ["💸", "Expense", "spent "], ["💵", "Income", "income "]];
 export default function App() {
   const [name, setName] = useState(localStorage.getItem("token") ? localStorage.getItem("name") : null);
@@ -36,8 +35,8 @@ export default function App() {
       {menu && <div className="menu"><button onClick={() => go("profile")}>👤 Profile</button><button onClick={() => go("settings")}>⚙️ Settings</button>
         <button onClick={flip}>{theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode"}</button><button className="red" onClick={logout}>🚪 Log out</button></div>}
       <button className="me" onClick={() => setMenu(!menu)}><span className="avatar sm">{(name || "?")[0].toUpperCase()}</span>
-        <span className="col"><b>{name}</b><small>Lv {lv.l} · {lv.name}</small><span className="xp"><i style={{ width: lv.pct + "%" }} /></span></span></button></aside>
-    <main><div className="toolbar"><div className="row"><button className="icon-pill collapse" title="Collapse sidebar" onClick={() => { const v = !rail; setRail(v); localStorage.setItem("rail", v ? "1" : "0"); }}>{rail ? "»" : "«"}</button><div className="crumb">{TITLES[tab]}</div></div>
+        <span className="mcol"><b>{name}</b><small>Lv {lv.l} · {lv.name}</small><span className="xp"><i style={{ width: lv.pct + "%" }} /></span></span></button></aside>
+    <main><div className="toolbar"><div className="row"><button className="icon-pill collapse" title="Collapse sidebar" onClick={() => { const v = !rail; setRail(v); localStorage.setItem("rail", v ? "1" : "0"); }}>{rail ? "»" : "«"}</button></div>
       <div className="row"><button className="pill" onClick={() => openPal("")}>🔎 <span>Search or command</span><kbd>Ctrl K</kbd></button><button className="icon-pill" onClick={flip} title="Toggle theme">{theme === "dark" ? "☀️" : "🌙"}</button></div></div>
       <div className="page" key={tab + rev}>{tab === "home" ? <Home key={rev} name={name} go={go} /> : tab === "journal" ? <Journal /> : tab === "analytics" ? <Analytics /> : tab === "profile" ? <Profile />
         : tab === "settings" ? <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onName={setName} logout={logout} /> : <Module key={tab + rev} kind={tab} />}</div></main>

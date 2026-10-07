@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel, level } from "./Extras";
+import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel, level, sIc } from "./Extras";
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lvl = (n) => (n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
 const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -17,7 +17,7 @@ export function Profile() {
     <div className="card prof"><div className="avatar">{(p.name || p.email)[0].toUpperCase()}</div>
       <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p><div className="lvl"><b>Level {lv.l} · {lv.name}</b><span className="muted small"> {lv.left} activities to level {lv.l + 1}</span></div><div className="xp wide"><i style={{ width: lv.pct + "%" }} /></div></div></div>
     <div className="stats">{[["Current streak", p.current_streak + " days 🔥"], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
-      <div className="card stat" key={l}><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
+      <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="card"><b>Achievements</b><div className="badges">{[["🌱", "First step", p.total >= 1], ["🔥", "3-day streak", p.longest_streak >= 3], ["⚡", "7-day streak", p.longest_streak >= 7], ["🏆", "30-day streak", p.longest_streak >= 30],
       ["📅", "30 active days", p.active_days >= 30], ["💯", "100 activities", p.total >= 100], ["🎯", "Goal setter", (p.kinds.GOAL || 0) >= 1], ["🤝", "Split master", (p.kinds.SPLIT || 0) >= 1]].map(([i, n, on]) =>
       <div key={n} className={"badge " + (on ? "on" : "")}><span>{i}</span><small>{n}</small></div>)}</div></div>
@@ -43,7 +43,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onName, logout })
   const changePw = async (e) => { e.preventDefault(); try { const res = await api("/auth/password/", { method: "POST", body: pw }); if (res.access) { localStorage.setItem("token", res.access); localStorage.setItem("refresh", res.refresh); } setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
   const exportData = async () => { const all = {}; for (const k of ["habits", "expenses", "todos", "goals", "splits"]) all[k] = await api(`/${k}/`);
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(all, null, 2)], { type: "application/json" })); a.download = "lifeos-export.json"; a.click(); };
-  return (<div className="settings"><h1>⚙️ Settings</h1>{msg && <div className="ok">{msg}</div>}
+  return (<div className="settings"><h1><span className="h-ic">⚙️</span>Settings</h1>{msg && <div className="ok">{msg}</div>}
     <form className="card" onSubmit={save}><h3>Profile</h3>
       <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
       <label>Email<input value={f.email} disabled /></label>
