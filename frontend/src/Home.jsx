@@ -22,6 +22,7 @@ export default function Home({ name, go }) {
   if (best && best.rate30 > 0) ins.push(`🏅 Most consistent habit: ${best.name} (${best.rate30}% over 30 days)`);
   return (<div><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} 👋</h1>
     <p className="muted">“{Q[now.getDate() % Q.length]}”</p></div></div>
+    {!d.p.verified && <div className="card tip">📧 Please verify your email address. <button className="btn" onClick={() => api("/auth/resend/", { method: "POST" }).then(() => alert("Verification email sent. Check your inbox."))}>Resend email</button></div>}
     <div className="stats">
       <div className="card stat"><span className="muted small">HABITS TODAY</span><b>{doneH}/{d.h.length}</b><div className="prog"><i style={{ width: (d.h.length ? (doneH / d.h.length) * 100 : 0) + "%" }} /></div></div>
       <div className="card stat"><span className="muted small">TASKS DUE</span><b>{due.length}</b></div>

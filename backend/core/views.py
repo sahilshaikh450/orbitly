@@ -1,4 +1,7 @@
 import calendar
+from django.conf import settings as dj
+from django.core import signing
+from django.core.mail import send_mail
 from datetime import date, timedelta
 from decimal import Decimal
 from django.contrib.auth import authenticate, get_user_model
@@ -10,6 +13,11 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Activity, Profile
 from .serializers import *
 from .templates_data import TEMPLATES
+
+def _mail(to, subject, body): send_mail(subject, body, dj.DEFAULT_FROM_EMAIL, [to], fail_silently=True)
+def _link(k, t): return f"{dj.FRONTEND_URL}/?{k}={t}"
+def send_verify(u):
+    _mail(u.email, "Verify your Orbitly email", f"Welcome to Orbitly!\n\nVerify your email: {_link('verify', signing.dumps({'u': u.id}, salt='verify'))}\n")
 
 def advance(d, freq):
     if freq == "DAILY": return d + timedelta(days=1)
@@ -106,7 +114,9 @@ def register(request):
     User = get_user_model()
     if User.objects.filter(username=email).exists():
         return Response({"error": "This email is already registered"}, status=400)
-    return _auth(User.objects.create_user(username=email, email=email, password=d["password"], first_name=d.get("name", "")))
+    u = User.objects.create_user(username=email, email=email, password=d["password"], first_name=d.get("name", ""))
+    send_verify(u)
+    return _auth(u)
 
 @api_view(["POST"])
 @permission_classes([AllowAny])
@@ -143,8 +153,39 @@ def profile(request):
     for k in acts.values_list("kind", flat=True): kinds[k] = kinds.get(k, 0) + 1
     cur, best = streaks(days)
     items = [dict(id=a.id, kind=a.kind, text=a.text, date=str(a.date), time=a.created.strftime("%H:%M")) for a in acts.order_by("-created")[:400]]
-    return Response(dict(name=u.first_name, email=u.email, joined=str(u.date_joined.date()), bio=p.bio, currency=p.currency,
+    return Response(dict(name=u.first_name, email=u.email, joined=str(u.date_joined.date()), bio=p.bio, currency=p.currency, verified=p.verified,
         current_streak=cur, longest_streak=best, total=len(days), active_days=len(set(days)), by_day=by_day, kinds=kinds, items=items))
 
 @api_view(["GET"])
 def templates(request, kind): return Response(TEMPLATES.get(kind, []))
+
+BAD = Response({"error": "This link is invalid or expired"}, status=400)
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def forgot(request):
+    u = get_user_model().objects.filter(username=(request.data.get("email") or "").lower().strip()).first()
+    if u:
+        t = signing.dumps({"u": u.id, "h": u.password[-12:]}, salt="reset")
+        _mail(u.email, "Reset your Orbitly password", f"Reset your password (valid for 1 hour): {_link('reset', t)}\n\nIgnore this email if it was not you.\n")
+    return Response({"ok": True})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def reset(request):
+    try: d = signing.loads(request.data.get("token", ""), salt="reset", max_age=3600)
+    except signing.BadSignature: return Response({"error": "This link is invalid or expired"}, status=400)
+    u = get_user_model().objects.filter(id=d["u"]).first(); pw = request.data.get("password", "")
+    if not u or u.password[-12:] != d["h"]: return Response({"error": "This link is invalid or expired"}, status=400)
+    if len(pw) < 6: return Response({"error": "Password must be 6+ characters"}, status=400)
+    u.set_password(pw); u.save(); return Response({"ok": True})
+
+@api_view(["POST"])
+@permission_classes([AllowAny])
+def verify(request):
+    try: d = signing.loads(request.data.get("token", ""), salt="verify", max_age=86400 * 3)
+    except signing.BadSignature: return Response({"error": "This link is invalid or expired"}, status=400)
+    p, _ = Profile.objects.get_or_create(user_id=d["u"]); p.verified = True; p.save(); return Response({"ok": True})
+
+@api_view(["POST"])
+def resend(request): send_verify(request.user); return Response({"ok": True})
