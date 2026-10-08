@@ -31,6 +31,7 @@ export default function App() {
     <aside className={open ? "open" : ""}><div className="logo">Orbit<span>ly</span></div>
       {NAV.map(([sec, items]) => <div key={sec}><div className="nav-sec">{sec}</div>
         {items.map(([k, ic, l]) => <button key={k} className={"nav " + (tab === k ? "on" : "")} onClick={() => go(k)}><span className="ni">{ic}</span>{l}</button>)}</div>)}
+      
       <div className="grow" />
       {menu && <div className="menu"><button onClick={() => go("profile")}>👤 Profile</button><button onClick={() => go("settings")}>⚙️ Settings</button>
         <button onClick={flip}>{theme === "dark" ? "☀️ Light mode" : "🌙 Dark mode"}</button><button className="red" onClick={logout}>🚪 Log out</button></div>}
