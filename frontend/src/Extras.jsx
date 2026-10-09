@@ -8,18 +8,21 @@ export function WeekChart({ items }) {
   return (<div className="card"><div className="row sp"><b>📅 This week</b><span className="muted small">Today: {today}/{items.length} done</span></div>
     <div className="wbars">{counts.map((c, i) => <div key={i}><i style={{ height: (c / max) * 70 + 4 }} /><span>{days[i]}</span><em>{c}</em></div>)}</div></div>);
 }
-export function HabitDetail({ h, onToggle, onClose }) {
-  const set = new Set(h.logs), today = new Date(), start = new Date(today);
+export function HabitDetail({ h, onToggle, onClose, onFreeze, freezes = 0 }) {
+  const set = new Set(h.logs), fz = new Set(h.frozen || []), today = new Date(), start = new Date(today);
   start.setDate(start.getDate() - 118); start.setDate(start.getDate() - start.getDay());
   const weeks = []; let d = new Date(start), w = [];
   while (d <= today) { w.push(new Date(d)); if (w.length === 7) { weeks.push(w); w = []; } d.setDate(d.getDate() + 1); } if (w.length) weeks.push(w);
+  const missed = [1, 2].map((n) => ymd(new Date(Date.now() - n * 864e5))).filter((k) => !set.has(k) && !fz.has(k));
   return (<div className="overlay" onClick={onClose}><div className="modal" onClick={(e) => e.stopPropagation()}>
     <div className="row sp"><h2>{h.icon} {h.name}</h2><button className="icon-btn" onClick={onClose}>✕</button></div><p className="muted">{h.description}</p>
     <div className="stats">{[["Streak", h.streak + " 🔥"], ["Best", h.best], ["30-day rate", h.rate30 + "%"], ["Total", h.total]].map(([l, v]) =>
       <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b>{v}</b></div>)}</div>
-    <div className="card"><b>Last 17 weeks</b><span className="muted small"> · click a day to mark or unmark it</span>
+    <div className="card row sp wrap"><span>❄️ <b>{freezes}</b> streak freeze{freezes === 1 ? "" : "s"} left this month</span>
+      {freezes > 0 && missed.length > 0 && <span className="row wrap">{missed.map((k) => <button key={k} className="btn" onClick={() => onFreeze(k)}>❄️ Freeze {k.slice(5)}</button>)}</span>}</div>
+    <div className="card"><b>Last 17 weeks</b><span className="muted small"> · click a day to mark or unmark it · <span style={{ color: "#60a5fa" }}>■</span> frozen day (keeps your streak)</span>
       <div className="heatwrap"><div className="heat">{weeks.map((w, i) => <div className="wk" key={i}><span className="mo">{w[0].getDate() <= 7 ? MN[w[0].getMonth()] : ""}</span>
-        {w.map((x) => { const k = ymd(x); return <i key={k} className={set.has(k) ? "c3" : ""} title={k} onClick={() => onToggle(k)} />; })}</div>)}</div></div></div></div></div>);
+        {w.map((x) => { const k = ymd(x); return <i key={k} className={set.has(k) ? "c3" : fz.has(k) ? "ice" : ""} title={k} onClick={() => onToggle(k)} />; })}</div>)}</div></div></div></div></div>);
 }
 export function Focus({ tasks, onDone }) {
   const open = tasks.filter((t) => t.status !== "DONE");

@@ -4,8 +4,8 @@ const SUBS = [["tx", "Transactions"], ["accounts", "Accounts"], ["goals", "Savin
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
-    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState(""), [loaded, setLoaded] = useState(false);
-  const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); });
+    [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState(""), [loaded, setLoaded] = useState(false), [fz, setFz] = useState(0);
+  const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); if (kind === "habits") api("/profile/").then((p) => setFz(p.freezes)).catch(() => {}); });
   useEffect(() => { if (kind === "expenses") api("/recurring/run/", { method: "POST" }).finally(load); else load(); api(`/templates/${kind}/`).then(setTpls); }, []);
   const create = async (d) => { const b = { ...d }; Object.keys(b).forEach((k) => b[k] === "" && delete b[k]);
     if (kind === "expenses" && !b.date) b.date = now; try { await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); } catch (x) { alert(x.message); } };
@@ -19,6 +19,8 @@ export default function Module({ kind }) {
   const shiftMon = (n) => { const [y, m] = mon.split("-").map(Number), d = new Date(y, m - 1 + n, 1); setMon(d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0")); };
   const monLabel = mon === "ALL" ? "All time" : new Date(mon + "-01T00:00:00").toLocaleString("en", { month: "long", year: "numeric" });
   const shown = mi.filter((i) => (flt === "ALL" || i[fk] === flt) && (i.name || i.title).toLowerCase().includes(q.toLowerCase()));
+  const ydayStr = (() => { const d = new Date(Date.now() - 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
+  const freezeIt = async (id, date) => { try { await api(`/habits/${id}/freeze/`, { method: "POST", body: { date } }); load(); } catch (e) { alert(e.message); } };
   const openEdit = (it) => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], it[f[0]] ?? ""]))); setModal("edit:" + it.id); };
   const submitForm = async (e) => { e.preventDefault();
     if (modal === "new") return create(form);
@@ -44,10 +46,10 @@ export default function Module({ kind }) {
     <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
     <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
       <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{CI[o] || ""} {o}</button>)}</div></div>
-    {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
+    {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="tag ice-tag">❄️ {fz} streak freeze{fz === 1 ? "" : "s"} left</span><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
     {kind === "habits" && <div className="grid">{sorter(shown).map((h) => <div className="card habit" key={h.id}>
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
-        <div className="tags"><span className="tag">📅 {h.frequency}</span><span className="tag">{CI[h.category] || "📌"} {h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span></div>
+        <div className="tags"><span className="tag">📅 {h.frequency}</span><span className="tag">{CI[h.category] || "📌"} {h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span>{!h.week[5] && h.week[4] && !h.done_today && fz > 0 && !(h.frozen || []).includes(ydayStr) && <button className="chip ice" onClick={() => freezeIt(h.id, ydayStr)}>❄️ Save streak</button>}</div>
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
@@ -69,7 +71,7 @@ export default function Module({ kind }) {
           <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}>◀</button>{delBtn(t.id)}
             <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}>▶</button></div></div>; })}</div>)}</div>}
     {loaded && items.length === 0 && <div className="empty"><div className="e-ic">{cfg.icon}</div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => setModal("tpl")}>📋 Browse templates</button></div>}</>}
-    {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
+    {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} freezes={fz} onFreeze={(date) => freezeIt(detail.id, date)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
     {modal && <div className="overlay" onClick={() => setModal(null)}><div className="modal" onClick={(e) => e.stopPropagation()}>
       <div className="row sp"><h2>{modal === "tpl" ? `📋 ${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}>✕</button></div>
       {modal === "tpl" ? <><p className="muted">Choose a template to get started quickly</p>

@@ -201,3 +201,6 @@ body::after{content:"";position:fixed;inset:0;pointer-events:none;z-index:150;op
 .stat .muted.small{font-weight:700;letter-spacing:.7px;font-size:12px}.muted{color:var(--mu)}.chip{font-weight:800;color:var(--mu)}.chip:hover{color:var(--tx)}.chip.on{color:#fff}
 .nav{color:var(--mu);font-weight:700}.nav-sec{color:var(--mu);opacity:1}.tag{color:var(--mu);font-weight:800}.tag.met,.tag.fire{color:inherit}.tag.fire{color:#fb923c}.tag.met{color:var(--ac2)}
 .icon-pill,.collapse{color:var(--tx)}.dots i{background:var(--c0)}.card{border-color:var(--bd)}.crumb{color:var(--mu)}.pill{color:var(--mu)}
+
+/* streak freeze */
+.heat i.ice{background:#60a5fa!important}.chip.ice{background:color-mix(in srgb,#60a5fa 22%,transparent);color:#60a5fa}.ice-tag{background:color-mix(in srgb,#60a5fa 20%,transparent);color:#60a5fa;margin-right:8px}

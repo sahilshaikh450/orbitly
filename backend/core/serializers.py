@@ -30,34 +30,40 @@ class HabitSerializer(Checked, serializers.ModelSerializer):
     done_today = serializers.SerializerMethodField()
     week = serializers.SerializerMethodField()
     logs = serializers.SerializerMethodField()
+    frozen = serializers.SerializerMethodField()
     best = serializers.SerializerMethodField()
     total = serializers.SerializerMethodField()
     rate30 = serializers.SerializerMethodField()
     class Meta:
         model = Habit; fields = "__all__"; read_only_fields = ["user"]
-    def get_done_today(self, o): return o.logs.filter(date=date.today()).exists()
     def validate_weekly_target(self, v):
         if not 1 <= v <= 7: raise serializers.ValidationError("Weekly target must be between 1 and 7")
         return v
-    def get_week(self, o):
-        days = set(o.logs.values_list("date", flat=True)); t = date.today()
-        return [(t - timedelta(days=6 - i)) in days for i in range(7)]
-    def get_logs(self, o):
-        t = date.today() - timedelta(days=125)
-        return sorted(str(d) for d in o.logs.filter(date__gte=t).values_list("date", flat=True))
-    def get_total(self, o): return o.logs.count()
-    def get_rate30(self, o): return round(o.logs.filter(date__gte=date.today() - timedelta(days=29)).count() * 100 / 30)
-    def get_best(self, o):
+    def _sets(self, o):
+        c = getattr(o, "_sets_cache", None)
+        if c is None:
+            rows = list(o.logs.values_list("date", "frozen")); c = ({d for d, f in rows if not f}, {d for d, f in rows if f}); o._sets_cache = c
+        return c
+    def _calc(self, o):
+        done, frz = self._sets(o); every = done | frz; t = date.today()
+        d = t if t in done else t - timedelta(days=1); n = 0
+        while d in every:
+            if d in done: n += 1
+            d -= timedelta(days=1)
         best = cur = 0; prev = None
-        for d in sorted(o.logs.values_list("date", flat=True)):
-            cur = cur + 1 if prev and (d - prev).days == 1 else 1; best = max(best, cur); prev = d
-        return best
-    def get_streak(self, o):
-        days = set(o.logs.values_list("date", flat=True))
-        d = date.today() if date.today() in days else date.today() - timedelta(days=1)
-        n = 0
-        while d in days: n += 1; d -= timedelta(days=1)
-        return n
+        for d in sorted(every):
+            cur = cur + (1 if d in done else 0) if prev and (d - prev).days == 1 else (1 if d in done else 0)
+            best = max(best, cur); prev = d
+        return n, best
+    def get_streak(self, o): return self._calc(o)[0]
+    def get_best(self, o): return self._calc(o)[1]
+    def get_done_today(self, o): return date.today() in self._sets(o)[0]
+    def get_week(self, o):
+        done = self._sets(o)[0]; t = date.today(); return [(t - timedelta(days=6 - i)) in done for i in range(7)]
+    def get_logs(self, o): lim = date.today() - timedelta(days=125); return sorted(str(d) for d in self._sets(o)[0] if d >= lim)
+    def get_frozen(self, o): lim = date.today() - timedelta(days=125); return sorted(str(d) for d in self._sets(o)[1] if d >= lim)
+    def get_total(self, o): return len(self._sets(o)[0])
+    def get_rate30(self, o): lim = date.today() - timedelta(days=29); return round(sum(1 for d in self._sets(o)[0] if d >= lim) * 100 / 30)
 
 class TodoSerializer(Checked, serializers.ModelSerializer):
     CHOICES = {"priority": S("LOW MEDIUM HIGH URGENT"), "status": S("TODO IN_PROGRESS DONE"), "repeat": S("NONE DAILY WEEKLY MONTHLY")}
