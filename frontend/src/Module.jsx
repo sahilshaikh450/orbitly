@@ -1,3 +1,4 @@
+import Icon, { Face } from "./Icon.jsx";
 import { useEffect, useState } from "react"; import { api } from "./api"; import { CFG, cur } from "./config"; import { Goals, Splits, Emi, Budgets, Trend, Recurring, Accounts } from "./Finance"; import { WeekChart, HabitDetail, Focus, TaskList, CalendarView, Num, Skel, confetti, undoable, sIc, CI } from "./Extras";
 const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"]];
 const SUBS = [["tx", "Transactions"], ["accounts", "Accounts"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
@@ -27,11 +28,11 @@ export default function Module({ kind }) {
     const b = { ...form }; cfg.fields.forEach((f) => { if (b[f[0]] === "") { if (f[2] === "number") delete b[f[0]]; else b[f[0]] = f[2] === "date" ? null : ""; } });
     try { await patch(Number(modal.split(":")[1]), b); setModal(null); } catch (x) { alert(x.message); } };
   const sorter = (a) => (sort === "streak" ? [...a].sort((x, y) => y.streak - x.streak) : sort === "name" ? [...a].sort((x, y) => x.name.localeCompare(y.name)) : a);
-  const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}>🗑</button>;
+  const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}><Icon name="trash" /></button>;
   const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
   return (<div>
-    <div className="head"><div><h1><span className="h-ic">{cfg.icon}</span>{cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
-      {main && <div className="row"><button className="btn ghost" onClick={() => setModal("tpl")}>📋 Templates</button><button className="btn primary" onClick={openNew}>＋ New {cfg.noun}</button></div>}</div>
+    <div className="head"><div><h1><span className="h-ic"><Icon name={cfg.icon} /></span>{cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
+      {main && <div className="row"><button className="btn ghost" onClick={() => setModal("tpl")}>Templates</button><button className="btn primary" onClick={openNew}><Icon name="plus" /> New {cfg.noun}</button></div>}</div>
     {kind === "expenses" && <div className="tabs">{SUBS.map(([k, l]) => <button key={k} className={sub === k ? "on" : ""} onClick={() => setSub(k)}>{l}</button>)}</div>}
     {kind === "expenses" && sub === "goals" && <Goals expenses={items} />}
     {kind === "expenses" && sub === "split" && <Splits />}
@@ -44,20 +45,20 @@ export default function Module({ kind }) {
     {kind === "expenses" && <div className="row" style={{ marginBottom: 12 }}><button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(-1)}>‹</button><b style={{ minWidth: 150, textAlign: "center" }}>{monLabel}</b>
       <button className="btn" disabled={mon === "ALL"} onClick={() => shiftMon(1)}>›</button><button className={"chip " + (mon === "ALL" ? "on" : "")} onClick={() => setMon(mon === "ALL" ? new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0") : "ALL")}>{mon === "ALL" ? "Back to month view" : "All time"}</button></div>}
     <div className="stats">{cfg.stats(mi).map(([l, v]) => <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
-    <div className="row wrap"><input className="search" placeholder="🔍 Search..." value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{CI[o] || ""} {o}</button>)}</div></div>
-    {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="tag ice-tag">❄️ {fz} streak freeze{fz === 1 ? "" : "s"} left</span><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
+    <div className="row wrap"><input className="search" placeholder="Search..." value={q} onChange={(e) => setQ(e.target.value)} />
+      <div className="chips">{["ALL", ...fopts].map((o) => <button key={o} className={"chip " + (flt === o ? "on" : "")} onClick={() => setFlt(o)}>{o.charAt(0) + o.slice(1).toLowerCase().replace("_", " ")}</button>)}</div></div>
+    {kind === "habits" && <><WeekChart items={items} /><div className="chips"><span className="tag ice-tag">{fz} streak freeze{fz === 1 ? "" : "s"} left</span><span className="muted small">Sort:</span>{[["new", "Newest"], ["streak", "Best streak"], ["name", "Name"]].map(([k, l]) => <button key={k} className={"chip " + (sort === k ? "on" : "")} onClick={() => setSort(k)}>{l}</button>)}</div></>}
     {kind === "habits" && <div className="grid">{sorter(shown).map((h) => <div className="card habit" key={h.id}>
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
-        <div className="tags"><span className="tag">📅 {h.frequency}</span><span className="tag">{CI[h.category] || "📌"} {h.category}</span><span className="tag fire">🔥 {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span>{!h.week[5] && h.week[4] && !h.done_today && fz > 0 && !(h.frozen || []).includes(ydayStr) && <button className="chip ice" onClick={() => freezeIt(h.id, ydayStr)}>❄️ Save streak</button>}</div>
+        <div className="tags">{h.frequency !== "DAILY" && <span className="tag">{h.frequency}</span>}<span className="tag">{CI[h.category] || ""} {h.category}</span><span className="tag fire"><Icon name="flame" size={12} /> {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span>{!h.week[5] && h.week[4] && !h.done_today && fz > 0 && !(h.frozen || []).includes(ydayStr) && <button className="chip ice" onClick={() => freezeIt(h.id, ydayStr)}>Save streak</button>}</div>
         <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
-      <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? "✓" : "○"}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}>✏️</button>{delBtn(h.id)}</div>)}</div>}
+      <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? <Icon name="check" /> : null}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}><Icon name="edit" /></button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
-      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>🥧 Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{v}</em></div>)}</div>}
+      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{Math.round(v).toLocaleString("en-IN")}</em></div>)}</div>}
       <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
-        <span className="tag">{CI[x.category] || "📌"} {x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{x.amount}</b>{delBtn(x.id)}</div>)}</div></>}
+        <span className="tag">{CI[x.category] || ""} {x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{Number(x.amount).toLocaleString("en-IN")}</b>{delBtn(x.id)}</div>)}</div></>}
     {kind === "todos" && <><Focus tasks={items} onDone={load} />
-      <div className="row wrap"><input className="quick" placeholder="⚡ Quick add a task and press Enter" value={quick} onChange={(e) => setQuick(e.target.value)}
+      <div className="row wrap"><input className="quick" placeholder="Quick add a task and press Enter" value={quick} onChange={(e) => setQuick(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && quick.trim()) { create({ title: quick.trim(), priority: "MEDIUM", status: "TODO" }); setQuick(""); } }} />
         <div className="tabs" style={{ margin: 0 }}>{[["board", "Board"], ["list", "List"], ["today", "Today"], ["calendar", "Calendar"]].map(([k, l]) => <button key={k} className={view === k ? "on" : ""} onClick={() => setView(k)}>{l}</button>)}</div></div></>}
     {kind === "todos" && view === "calendar" && <CalendarView items={shown} openEdit={openEdit} create={create} />}
@@ -65,18 +66,18 @@ export default function Module({ kind }) {
     {kind === "todos" && view === "board" && <div className="kanban">{COLS.map(([s, label], ci) => <div className="col" key={s} onDragOver={(e) => e.preventDefault()} onDrop={(e) => { const id = e.dataTransfer.getData("id"); if (id) { if (s === "DONE") confetti(e.clientX, e.clientY); patch(Number(id), { status: s }); } }}><h3>{label} ({shown.filter((t) => t.status === s).length})</h3>
       {shown.filter((t) => t.status === s).map((t) => { const sb = t.subtasks || [];
         return <div className={"card task " + (s !== "DONE" && t.due_date && t.due_date < now ? "late" : "")} key={t.id} draggable onDragStart={(e) => e.dataTransfer.setData("id", t.id)}><b className="link" onClick={() => openEdit(t)}>{t.title}</b><div className="muted small">{t.description}</div>
-          <div className="tags"><span className={"tag p-" + t.priority}>{t.priority}</span>{t.due_date && <span className="tag">📅 {t.due_date}</span>}{t.tags && <span className="tag">#{t.tags}</span>}{t.focus_minutes > 0 && <span className="tag">⏱ {t.focus_minutes}m</span>}{t.repeat && t.repeat !== "NONE" && <span className="tag">🔁 {t.repeat}</span>}{sb.length > 0 && <span className="tag">{sb.filter((x) => x.done).length}/{sb.length}</span>}</div>
+          <div className="tags"><span className={"tag p-" + t.priority}>{t.priority}</span>{t.due_date && <span className="tag">{t.due_date}</span>}{t.tags && <span className="tag">#{t.tags}</span>}{t.focus_minutes > 0 && <span className="tag">{t.focus_minutes}m</span>}{t.repeat && t.repeat !== "NONE" && <span className="tag">{t.repeat}</span>}{sb.length > 0 && <span className="tag">{sb.filter((x) => x.done).length}/{sb.length}</span>}</div>
           <div className="subs">{sb.map((x, i) => <label key={i}><input type="checkbox" checked={x.done} onChange={() => patch(t.id, { subtasks: sb.map((y, j) => (j === i ? { ...y, done: !y.done } : y)) })} /><span className={x.done ? "strike" : ""}>{x.t}</span></label>)}
             <input className="mini" placeholder="+ Add subtask" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { patch(t.id, { subtasks: [...sb, { t: e.target.value.trim(), done: false }] }); e.target.value = ""; } }} /></div>
-          <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}>◀</button>{delBtn(t.id)}
-            <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}>▶</button></div></div>; })}</div>)}</div>}
-    {loaded && items.length === 0 && <div className="empty"><div className="e-ic">{cfg.icon}</div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => setModal("tpl")}>📋 Browse templates</button></div>}</>}
+          <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}><Icon name="chevron-left" /></button>{delBtn(t.id)}
+            <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}><Icon name="chevron-right" /></button></div></div>; })}</div>)}</div>}
+    {loaded && items.length === 0 && <div className="empty"><div className="e-ic"><Icon name={cfg.icon} /></div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => setModal("tpl")}>Browse templates</button></div>}</>}
     {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} freezes={fz} onFreeze={(date) => freezeIt(detail.id, date)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
     {modal && <div className="overlay" onClick={() => setModal(null)}><div className="modal" onClick={(e) => e.stopPropagation()}>
-      <div className="row sp"><h2>{modal === "tpl" ? `📋 ${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}>✕</button></div>
+      <div className="row sp"><h2>{modal === "tpl" ? `${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}><Icon name="x" /></button></div>
       {modal === "tpl" ? <><p className="muted">Choose a template to get started quickly</p>
         <div className="tpl-grid">{tpls.map((t, i) => <div key={i} className={"card tpl " + (sel === i ? "sel" : "")} onClick={() => setSel(i)}>
-          <b>{t.icon || (kind === "expenses" ? (t.type === "INCOME" ? "💵" : "💸") : "📌")} {t.name || t.title}</b><div className="muted small">{t.description || (t.amount ? C + t.amount : "")}</div>
+          <b>{t.name || t.title}</b><div className="muted small">{t.description || (t.amount ? C + t.amount : "")}</div>
           <div className="tags"><span className="tag">{t.frequency || t.type || t.priority}</span><span className="tag">{t.category || t.tags}</span></div></div>)}</div>
         <button className="btn primary wide" disabled={sel === null} onClick={() => create(tpls[sel])}>{sel === null ? "Select a template first" : "Add selected template"}</button></>
       : <form onSubmit={submitForm}>

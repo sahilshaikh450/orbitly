@@ -1,5 +1,5 @@
 import { useState } from "react"; import { api } from "./api";
-const T = { login: ["Welcome back 👋", "Log in to Orbitly"], register: ["Create your account 🚀", "Get started in 30 seconds"], forgot: ["Forgot password? 🔑", "We'll email you a reset link"], reset: ["Set a new password 🔒", "Choose a new password for your account"] };
+const T = { login: ["Welcome back ", "Log in to Orbitly"], register: ["Create your account ", "Get started in 30 seconds"], forgot: ["Forgot password? ", "We'll email you a reset link"], reset: ["Set a new password ", "Choose a new password for your account"] };
 export default function Auth({ onLogin, resetToken }) {
   const [mode, setMode] = useState(resetToken ? "reset" : "login"); const [f, setF] = useState({ name: "", email: "", password: "" });
   const [err, setErr] = useState(""), [info, setInfo] = useState(""), [busy, setBusy] = useState(false), [show, setShow] = useState(false);
@@ -15,7 +15,7 @@ export default function Auth({ onLogin, resetToken }) {
   return (<div className="auth">
     <div className="auth-hero"><div className="orb o1"/><div className="orb o2"/>
       <h1>Orbit<span>ly</span></h1><p>Habits, money and tasks. One place, one dashboard.</p>
-      <ul><li>💪 Streaks, heatmaps and daily check-ins</li><li>💰 Budgeting, savings goals, split tracker, EMI calculator</li><li>✅ Kanban board, calendar and focus timer</li><li>🔔 Reminders and installable on your phone</li></ul></div>
+      <ul><li>Streaks, heatmaps and daily check-ins</li><li>Budgeting, savings goals, split tracker, EMI calculator</li><li>Kanban board, calendar and focus timer</li><li>Reminders and installable on your phone</li></ul></div>
     <form className="auth-card" onSubmit={submit}>
       <h2>{T[mode][0]}</h2><p className="muted">{T[mode][1]}</p>
       {mode === "register" && <input placeholder="Full name" value={f.name} onChange={set("name")} required />}

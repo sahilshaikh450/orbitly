@@ -1,8 +1,9 @@
+import Icon, { Face } from "./Icon.jsx";
 import { useEffect, useState } from "react"; import { api } from "./api"; import { getR, setR, notify } from "./reminders"; import { Num, Skel, level, sIc } from "./Extras";
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lvl = (n) => (n === 0 ? 0 : n === 1 ? 1 : n < 4 ? 2 : n < 7 ? 3 : 4);
 const MN = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const ICON = { HABIT: "💪", MONEY: "💰", TASK: "✅", GOAL: "🎯", SPLIT: "🤝" };
+const ICON = { HABIT: "repeat", MONEY: "wallet", TASK: "check-square", GOAL: "target", SPLIT: "users", JOURNAL: "book" };
 export function Profile() {
   const [p, setP] = useState(null); const [day, setDay] = useState(null);
   useEffect(() => { api("/profile/").then(setP); }, []);
@@ -16,21 +17,21 @@ export function Profile() {
   return (<div>
     <div className="card prof"><div className="avatar">{(p.name || p.email)[0].toUpperCase()}</div>
       <div className="grow"><h1>{p.name || "Your name"}</h1><div className="muted">{p.email} · Joined {p.joined}</div><p>{p.bio || "Add a bio in Settings."}</p><div className="lvl"><b>Level {lv.l} · {lv.name}</b><span className="muted small"> {lv.left} activities to level {lv.l + 1}</span></div><div className="xp wide"><i style={{ width: lv.pct + "%" }} /></div></div></div>
-    <div className="stats">{[["Current streak", p.current_streak + " days 🔥"], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
+    <div className="stats">{[["Current streak", p.current_streak + " days "], ["Longest streak", p.longest_streak + " days"], ["Total activities", p.total], ["Active days", p.active_days]].map(([l, v]) =>
       <div className="card stat" key={l}><i className="si">{sIc(l)}</i><span className="muted small">{l.toUpperCase()}</span><b><Num v={v} /></b></div>)}</div>
-    <div className="card"><b>Achievements</b><div className="badges">{[["🌱", "First step", p.total >= 1], ["🔥", "3-day streak", p.longest_streak >= 3], ["⚡", "7-day streak", p.longest_streak >= 7], ["🏆", "30-day streak", p.longest_streak >= 30],
-      ["📅", "30 active days", p.active_days >= 30], ["💯", "100 activities", p.total >= 100], ["🎯", "Goal setter", (p.kinds.GOAL || 0) >= 1], ["🤝", "Split master", (p.kinds.SPLIT || 0) >= 1]].map(([i, n, on]) =>
-      <div key={n} className={"badge " + (on ? "on" : "")}><span>{i}</span><small>{n}</small></div>)}</div></div>
+    <div className="card"><b>Achievements</b><div className="badges">{[["star", "First step", p.total >= 1], ["flame", "3-day streak", p.longest_streak >= 3], ["zap", "7-day streak", p.longest_streak >= 7], ["trophy", "30-day streak", p.longest_streak >= 30],
+      ["calendar", "30 active days", p.active_days >= 30], ["award", "100 activities", p.total >= 100], ["target", "Goal setter", (p.kinds.GOAL || 0) >= 1], ["users", "Split master", (p.kinds.SPLIT || 0) >= 1]].map(([i, n, on]) =>
+      <div key={n} className={"badge " + (on ? "on" : "")}><span><Icon name={i} /></span><small>{n}</small></div>)}</div></div>
     <div className="card"><div className="row sp"><b>{year} activities in the last year</b>
       <div className="row small muted">Less {[0,1,2,3,4].map((c) => <i key={c} className={"sq c" + c} />)} More</div></div>
       <div className="heatwrap"><div className="heat">{weeks.map((w, i) => <div className="wk" key={i}><span className="mo">{w[0].getDate() <= 7 ? MN[w[0].getMonth()] : ""}</span>
         {w.map((x) => { const k = ymd(x), n = p.by_day[k] || 0;
           return <i key={k} className={"c" + lvl(n) + (day === k ? " pick" : "")} title={`${k}: ${n} activities`} onClick={() => setDay(day === k ? null : k)} />; })}</div>)}</div></div>
-      <div className="chips">{Object.entries(p.kinds).map(([k, n]) => <span className="chip on" key={k}>{ICON[k]} {k} · {n}</span>)}</div></div>
+      <div className="chips">{Object.entries(p.kinds).map(([k, n]) => <span className="chip" key={k}><Icon name={ICON[k] || "dot"} size={14} /> {k.toLowerCase()} · {n}</span>)}</div></div>
     <div className="card"><div className="row sp"><b>{day ? `Activity on ${day}` : "Recent activity"}</b>{day && <a onClick={() => setDay(null)}>Clear</a>}</div>
       {list.length === 0 && <p className="muted">Nothing here yet. Complete a habit or task to start your streak.</p>}
       {Object.entries(groups).map(([dt, a]) => <div key={dt}><div className="day">{dt}</div>
-        {a.map((i) => <div className="act" key={i.id}><span>{ICON[i.kind]}</span><span className="grow">{i.text}</span><span className="muted small">{i.time}</span></div>)}</div>)}</div></div>);
+        {a.map((i) => <div className="act" key={i.id}><span className="aic"><Icon name={ICON[i.kind] || "dot"} /></span><span className="grow">{i.text}</span><span className="muted small">{i.time}</span></div>)}</div>)}</div></div>);
 }
 export function Settings({ theme, setTheme, accent, setAccent, onName, logout }) {
   const [f, setF] = useState(null); const [msg, setMsg] = useState(""); const [r, setRs] = useState(getR()); const [pw, setPw] = useState({ old_password: "", new_password: "" });
@@ -43,7 +44,7 @@ export function Settings({ theme, setTheme, accent, setAccent, onName, logout })
   const changePw = async (e) => { e.preventDefault(); try { const res = await api("/auth/password/", { method: "POST", body: pw }); if (res.access) { localStorage.setItem("token", res.access); localStorage.setItem("refresh", res.refresh); } setMsg("Password updated ✓"); setPw({ old_password: "", new_password: "" }); } catch (x) { setMsg(x.message); } };
   const exportData = async () => { const all = {}; for (const k of ["habits", "expenses", "todos", "goals", "splits"]) all[k] = await api(`/${k}/`);
     const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([JSON.stringify(all, null, 2)], { type: "application/json" })); a.download = "lifeos-export.json"; a.click(); };
-  return (<div className="settings"><h1><span className="h-ic">⚙️</span>Settings</h1>{msg && <div className="ok">{msg}</div>}
+  return (<div className="settings"><h1><span className="h-ic"><Icon name="sliders" /></span>Settings</h1>{msg && <div className="ok">{msg}</div>}
     <form className="card" onSubmit={save}><h3>Profile</h3>
       <label>Name<input value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} /></label>
       <label>Email<input value={f.email} disabled /></label>
@@ -56,12 +57,12 @@ export function Settings({ theme, setTheme, accent, setAccent, onName, logout })
       <div className="row sp"><span>Daily reminders</span><button className={"switch " + (r.on ? "on" : "")} onClick={toggleR}><i /></button></div>
       {r.on && <div className="row wrap"><label style={{ flex: 1 }}>Habit reminder<input type="time" value={r.habit} onChange={(e) => upd({ ...r, habit: e.target.value })} /></label>
         <label style={{ flex: 1 }}>Task reminder<input type="time" value={r.task} onChange={(e) => upd({ ...r, task: e.target.value })} /></label></div>}
-      <div className="row wrap"><button type="button" className="btn" onClick={() => notify("Orbitly", "Notifications are working 🎉")}>Send test notification</button>
+      <div className="row wrap"><button type="button" className="btn" onClick={() => notify("Orbitly", "Notifications are working ")}>Send test notification</button>
         {window.__bip && <button type="button" className="btn primary" onClick={() => window.__bip.prompt()}>Install app</button>}</div>
       <p className="muted small">Reminders fire while Orbitly is open in a browser tab or as an installed app.</p></div>
     <form className="card" onSubmit={changePw}><h3>Change password</h3>
       <input type="password" placeholder="Current password" value={pw.old_password} onChange={(e) => setPw({ ...pw, old_password: e.target.value })} required />
       <input type="password" placeholder="New password (min 8)" value={pw.new_password} onChange={(e) => setPw({ ...pw, new_password: e.target.value })} required />
       <button className="btn">Update password</button></form>
-    <div className="card"><h3>Data &amp; account</h3><div className="row"><button className="btn" onClick={exportData}>⬇ Export my data</button><button className="btn red" onClick={logout}>Log out</button></div></div></div>);
+    <div className="card"><h3>Data &amp; account</h3><div className="row"><button className="btn" onClick={exportData}>Export my data</button><button className="btn red" onClick={logout}>Log out</button></div></div></div>);
 }
