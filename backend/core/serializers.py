@@ -69,6 +69,12 @@ class TodoSerializer(Checked, serializers.ModelSerializer):
     CHOICES = {"priority": S("LOW MEDIUM HIGH URGENT"), "status": S("TODO IN_PROGRESS DONE"), "repeat": S("NONE DAILY WEEKLY MONTHLY")}
     class Meta:
         model = Todo; fields = "__all__"; read_only_fields = ["user", "focus_minutes"]
+    def validate(self, a):
+        if a.get("pinned"):
+            qs = Todo.objects.filter(user=self.context["request"].user, pinned=True).exclude(status="DONE")
+            if self.instance: qs = qs.exclude(pk=self.instance.pk)
+            if qs.count() >= 3: raise serializers.ValidationError({"pinned": "You can pin up to 3 tasks as today's focus"})
+        return super().validate(a)
     def validate_subtasks(self, v):
         if not isinstance(v, list) or len(v) > 50: raise serializers.ValidationError("Up to 50 subtasks are allowed")
         return [{"t": str(x.get("t", "")).strip()[:200], "done": bool(x.get("done"))} for x in v if isinstance(x, dict) and str(x.get("t", "")).strip()]

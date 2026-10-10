@@ -38,6 +38,7 @@ class Todo(models.Model):
     subtasks = models.JSONField(default=list, blank=True)
     focus_minutes = models.IntegerField(default=0)
     repeat = models.CharField(max_length=8, default="NONE")
+    pinned = models.BooleanField(default=False)
 
 import datetime
 class Goal(models.Model):

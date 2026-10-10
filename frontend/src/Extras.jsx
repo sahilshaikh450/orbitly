@@ -50,7 +50,7 @@ export function TaskList({ items, view, patch, del, openEdit }) {
       <div className="muted small">{t.description}</div></div>
     {t.focus_minutes > 0 && <span className="tag">{t.focus_minutes}m</span>}
     {t.due_date && <span className={"tag " + (t.status !== "DONE" && t.due_date < now ? "p-URGENT" : "")}>{t.due_date}</span>}
-    <span className={"tag p-" + t.priority}>{t.priority}</span><button className="icon-btn" onClick={() => del(t.id)}><Icon name="trash" /></button></div>)}</div>);
+    <span className={"tag p-" + t.priority}>{t.priority}</span><button className={"icon-btn pin " + (t.pinned ? "on" : "")} title="Focus today" onClick={() => patch(t.id, { pinned: !t.pinned }).catch((e) => alert(e.message))}><Icon name="star" /></button><button className="icon-btn" onClick={() => del(t.id)}><Icon name="trash" /></button></div>)}</div>);
 }
 
 export function CalendarView({ items, openEdit, create }) {

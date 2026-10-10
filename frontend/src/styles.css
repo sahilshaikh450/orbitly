@@ -118,3 +118,10 @@ input[type=checkbox]:checked::after{content:"";width:8px;height:4px;border-left:
 .bar>span{display:block;text-transform:lowercase}.bar>span::first-letter{text-transform:uppercase}.habit{align-items:flex-start}.habit>.check,.habit>.icon-btn{margin-top:4px}.habit .tags{margin-top:6px}
 .insights .act{font-size:13.5px}
 .settings h1{display:flex;align-items:center;gap:12px;margin-bottom:4px}
+
+/* v4 polish */
+.ch{display:flex;align-items:center;gap:8px}.ch .ico{width:16px;height:16px;color:var(--mu)}.tdate{font-size:13px;margin-left:14px}
+.ins-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:8px;margin-top:12px}.ins{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border:1px solid var(--bd);border-radius:8px;background:var(--in);font-size:13px;line-height:1.4}.ins-dot{width:6px;height:6px;border-radius:50%;background:var(--ac);margin-top:7px;flex-shrink:0}
+.col h3{display:flex;align-items:center;gap:8px}.col h3::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mu)}.kanban>.col:nth-child(2) h3::before{background:#6ea8fe}.kanban>.col:nth-child(3) h3::before{background:var(--ac)}
+.habit .icon-btn,.rowi .icon-btn{opacity:0;transition:opacity .15s}.habit:hover .icon-btn,.rowi:hover .icon-btn,.habit .icon-btn:focus-visible,.rowi .icon-btn:focus-visible{opacity:1}.icon-btn.pin.on{opacity:1!important;color:#f5a524}.icon-btn.pin.on .ico{fill:currentColor}
+.task.pinned{border-color:color-mix(in srgb,#f5a524 50%,var(--bd))}@media(hover:none){.habit .icon-btn,.rowi .icon-btn{opacity:1}}@media(max-width:800px){.tdate{display:none}}
