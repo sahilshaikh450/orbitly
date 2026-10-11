@@ -15,7 +15,10 @@ export default function Auth({ onLogin, resetToken }) {
   return (<div className="auth">
     <div className="auth-hero"><div className="orb o1"/><div className="orb o2"/>
       <h1>Orbit<span>ly</span></h1><p>Habits, money and tasks. One place, one dashboard.</p>
-      <ul><li>Streaks, heatmaps and daily check-ins</li><li>Budgeting, savings goals, split tracker, EMI calculator</li><li>Kanban board, calendar and focus timer</li><li>Reminders and installable on your phone</li></ul></div>
+      <ul><li>Streaks, heatmaps and daily check-ins</li><li>Budgeting, savings goals, split tracker, EMI calculator</li><li>Kanban board, calendar and focus timer</li><li>Reminders and installable on your phone</li></ul>
+      <div className="hero-card"><div className="row sp small muted"><span>Today</span><span>3 of 4 habits</span></div>
+        {[["Morning meditation", true], ["Daily exercise", true], ["Read 20 pages", true], ["Drink water", false]].map(([n, d]) => <div className="hc-row" key={n}><span className={"hc-dot " + (d ? "on" : "")} />{n}</div>)}
+        <div className="prog"><i style={{ width: "75%" }} /></div></div></div>
     <form className="auth-card" onSubmit={submit}>
       <h2>{T[mode][0]}</h2><p className="muted">{T[mode][1]}</p>
       {mode === "register" && <input placeholder="Full name" value={f.name} onChange={set("name")} required />}

@@ -103,7 +103,7 @@ export const undoable = (msg, fn) => window.dispatchEvent(new CustomEvent("undo"
 const SI = { TOTAL: "list", "DONE TODAY": "check", "BEST STREAK": "flame", COMPLETION: "target", INCOME: "trend-up", EXPENSE: "card", BALANCE: "wallet", ENTRIES: "receipt", DONE: "check", OVERDUE: "clock", PROGRESS: "trend-up",
   "TOTAL SAVED": "bank", "TOTAL TARGET": "target", GOALS: "target", "YOU ARE OWED": "arrow-down", "YOU OWE": "arrow-up", "MONTHLY INCOME": "trend-up", "MONTHLY BILLS": "receipt", NET: "trend-up", "MONTHLY BUDGET": "calendar",
   SPENT: "card", REMAINING: "coin", "NET WORTH": "bank", ASSETS: "bank", LIABILITIES: "trend-down", "CURRENT STREAK": "flame", "LONGEST STREAK": "trophy", "TOTAL ACTIVITIES": "zap", "ACTIVE DAYS": "calendar", "HABITS TODAY": "repeat",
-  "TASKS DUE": "clock", "MONTH BALANCE": "wallet", "WRITING STREAK": "flame", "30-DAY MOOD": "smile", "THIS WEEK": "calendar", "AVG / DAY": "trend-down", "SAVINGS RATE": "percent", STREAK: "flame", BEST: "trophy", "30-DAY RATE": "target",
+  "TASKS DUE": "clock", "MONTH BALANCE": "wallet", "WRITING STREAK": "flame", "30-DAY MOOD": "smile", "THIS WEEK": "calendar", "AVG / DAY": "trend-down", "SAVINGS RATE": "percent", STREAK: "flame", BEST: "trophy", "30-DAY RATE": "target", "PERFECT DAYS": "award",
   ACTIVITIES: "zap", SPENT_: "card" };
 export const sIc = (l) => <Icon name={SI[String(l).toUpperCase()] || "dot"} />;
 export const CI = {};

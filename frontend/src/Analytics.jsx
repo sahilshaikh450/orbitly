@@ -5,7 +5,7 @@ const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const fmt = (n) => cur() + Math.round(n).toLocaleString("en-IN");
 export default function Analytics() {
   const [d, setD] = useState(null), [range, setRange] = useState("30");
-  useEffect(() => { Promise.all([api("/expenses/"), api("/habits/"), api("/profile/")]).then(([e, h, p]) => setD({ e, h, p })); }, []);
+  useEffect(() => { Promise.all([api("/expenses/"), api("/habits/"), api("/profile/"), api("/todos/")]).then(([e, h, p, t]) => setD({ e, h, p, t })); }, []);
   if (!d) return <Skel />;
   const cut = range === "all" ? "0000" : ymd(new Date(Date.now() - (+range - 1) * 864e5)), inR = d.e.filter((x) => x.date >= cut);
   const exp = inR.filter((x) => x.type === "EXPENSE"), spent = exp.reduce((n, x) => n + Number(x.amount), 0), income = inR.filter((x) => x.type === "INCOME").reduce((n, x) => n + Number(x.amount), 0);
@@ -16,6 +16,7 @@ export default function Analytics() {
   const sum = (ty, m) => d.e.filter((x) => x.type === ty && x.date.startsWith(m)).reduce((n, x) => n + Number(x.amount), 0), inc = months.map(([m]) => sum("INCOME", m)), ex = months.map(([m]) => sum("EXPENSE", m));
   const mx = Math.max(1, ...inc, ...ex), X = (i) => 30 + i * (540 / 11), Y = (v) => 170 - (v / mx) * 150, pts = (a) => a.map((v, i) => `${X(i)},${Y(v)}`).join(" ");
   const wd = Array(7).fill(0); d.p.items.forEach((a) => { wd[new Date(a.date + "T00:00:00").getDay()]++; }); const wmax = Math.max(1, ...wd), best = wd.indexOf(Math.max(...wd));
+  const focusTotal = d.t.reduce((n, t) => n + (t.focus_minutes || 0), 0), topFocus = [...d.t].filter((t) => t.focus_minutes > 0).sort((a, b) => b.focus_minutes - a.focus_minutes).slice(0, 5);
   const d7 = ymd(new Date(Date.now() - 6 * 864e5)), d14 = ymd(new Date(Date.now() - 13 * 864e5)), tom = ymd(new Date(Date.now() + 864e5));
   const cnt = (f, lo, hi) => d.p.items.filter((a) => a.date >= lo && a.date < hi && f(a)).length, sp = (lo, hi) => d.e.filter((x) => x.type === "EXPENSE" && x.date >= lo && x.date < hi).reduce((n, x) => n + Number(x.amount), 0);
   const isH = (a) => a.kind === "HABIT" && a.text.startsWith("Completed"), isT = (a) => a.kind === "TASK" && a.text.startsWith("Completed"), byDay = {};
@@ -37,11 +38,15 @@ export default function Analytics() {
           <text x="50" y="54" textAnchor="middle" fontSize="11" fontWeight="800" fill="currentColor">{fmt(spent)}</text></svg>
         <div className="legend">{cats.slice(0, 8).map(([k, v], i) => <div key={k}><i style={{ background: PAL[i % 8] }} />{k} · {Math.round((v / spent) * 100)}%</div>)}</div></div>}</div>
       <div className="card"><b>Income vs expense · 12 months</b><svg viewBox="0 0 600 200" width="100%"><line x1="30" y1="170" x2="570" y2="170" stroke="var(--bd)" />
-        <polyline className="line" points={pts(inc)} fill="none" stroke="#10b981" strokeWidth="3" /><polyline className="line" points={pts(ex)} fill="none" stroke="#ef4444" strokeWidth="3" />
+        <polygon points={`${X(0)},170 ${pts(inc)} ${X(11)},170`} fill="var(--ac)" opacity=".1" /><polyline className="line" points={pts(inc)} fill="none" stroke="var(--ac)" strokeWidth="3" /><polyline className="line" points={pts(ex)} fill="none" stroke="var(--danger)" strokeWidth="3" />
         {months.map(([, l], i) => <text key={l + i} x={X(i)} y="190" textAnchor="middle" fontSize="11" fill="var(--mu)">{l}</text>)}</svg>
         <div className="row small muted"><span className="inc">■</span> Income <span className="exp">■</span> Expense</div></div>
       <div className="card"><b>Activity by weekday</b><span className="muted small"> · most active: {DN[best]}</span><div className="wbars">{wd.map((c, i) => <div key={i}><i style={{ height: (c / wmax) * 70 + 4, opacity: i === best ? 1 : 0.55 }} /><span>{DN[i]}</span><em>{c}</em></div>)}</div></div>
       <div className="card"><b>Tasks completed · last 8 weeks</b><div className="wbars">{wk.map((c, i) => <div key={i}><i style={{ height: (c / kmax) * 70 + 4 }} /><span>{i === 7 ? "Now" : `-${7 - i}w`}</span><em>{c}</em></div>)}</div></div>
-      <div className="card" style={{ gridColumn: "1/-1" }}><b>Habit consistency · last 30 days</b>{d.h.length === 0 && <p className="muted">No habits yet.</p>}
-        {[...d.h].sort((a, b) => b.rate30 - a.rate30).map((h) => <div className="bar" key={h.id}><span>{h.icon} {h.name.slice(0, 14)}</span><div><i style={{ width: h.rate30 + "%" }} /></div><em>{h.rate30}%</em></div>)}</div></div></div>);
+      <div className="card"><b className="ch"><Icon name="clock" />Focus time</b>
+        <div className="row" style={{ alignItems: "baseline", margin: "8px 0 4px" }}><span style={{ fontSize: 28, fontWeight: 650 }}>{Math.floor(focusTotal / 60)}h {focusTotal % 60}m</span><span className="muted small">across all tasks</span></div>
+        {topFocus.length === 0 && <p className="muted small">Run the focus timer on a task to see it here.</p>}
+        {topFocus.map((t) => <div className="bar" key={t.id}><span>{t.title.length > 16 ? t.title.slice(0, 15) + "…" : t.title}</span><div><i style={{ width: (t.focus_minutes / topFocus[0].focus_minutes) * 100 + "%" }} /></div><em>{t.focus_minutes}m</em></div>)}</div>
+      <div className="card"><b>Habit consistency · last 30 days</b>{d.h.length === 0 && <p className="muted">No habits yet.</p>}
+        {[...d.h].sort((a, b) => b.rate30 - a.rate30).map((h) => <div className="bar" key={h.id}><span>{h.name.length > 16 ? h.name.slice(0, 15) + "…" : h.name}</span><div><i style={{ width: h.rate30 + "%" }} /></div><em>{h.rate30}%</em></div>)}</div></div></div>);
 }

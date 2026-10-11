@@ -115,7 +115,7 @@ main{min-width:0;padding:20px clamp(16px,3vw,40px) 48px}.toolbar{display:flex;ju
 input[type=checkbox]{appearance:none;-webkit-appearance:none;width:16px;height:16px;margin:0 8px 0 0;border:1.5px solid var(--bd);border-radius:4px;background:var(--in);display:inline-grid;place-content:center;flex-shrink:0;cursor:pointer;padding:0}
 input[type=checkbox]:hover{border-color:var(--ac)}input[type=checkbox]:checked{background:var(--ac);border-color:var(--ac)}
 input[type=checkbox]:checked::after{content:"";width:8px;height:4px;border-left:2px solid var(--on-ac);border-bottom:2px solid var(--on-ac);transform:rotate(-45deg) translate(1px,-1px)}
-.bar>span{display:block;text-transform:lowercase}.bar>span::first-letter{text-transform:uppercase}.habit{align-items:flex-start}.habit>.check,.habit>.icon-btn{margin-top:4px}.habit .tags{margin-top:6px}
+.bar>span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.habit{align-items:flex-start}.habit>.check,.habit>.icon-btn{margin-top:4px}.habit .tags{margin-top:6px}
 .insights .act{font-size:13.5px}
 .settings h1{display:flex;align-items:center;gap:12px;margin-bottom:4px}
 
@@ -125,3 +125,10 @@ input[type=checkbox]:checked::after{content:"";width:8px;height:4px;border-left:
 .col h3{display:flex;align-items:center;gap:8px}.col h3::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--mu)}.kanban>.col:nth-child(2) h3::before{background:#6ea8fe}.kanban>.col:nth-child(3) h3::before{background:var(--ac)}
 .habit .icon-btn,.rowi .icon-btn{opacity:0;transition:opacity .15s}.habit:hover .icon-btn,.rowi:hover .icon-btn,.habit .icon-btn:focus-visible,.rowi .icon-btn:focus-visible{opacity:1}.icon-btn.pin.on{opacity:1!important;color:#f5a524}.icon-btn.pin.on .ico{fill:currentColor}
 .task.pinned{border-color:color-mix(in srgb,#f5a524 50%,var(--bd))}@media(hover:none){.habit .icon-btn,.rowi .icon-btn{opacity:1}}@media(max-width:800px){.tdate{display:none}}
+
+/* v5 */
+.groups{display:flex;flex-direction:column;gap:18px;margin-top:14px}.groups .list{margin-top:0}.gh{display:flex;justify-content:space-between;font-size:12.5px;font-weight:600;color:var(--mu);margin-bottom:6px;padding:0 2px;font-variant-numeric:tabular-nums}
+.dots{gap:6px}.dots .dc{display:flex;flex-direction:column;align-items:center;gap:3px}.dots .dc i{width:18px;height:6px;border-radius:2px;background:var(--c0)}.dots .dc.on i{background:var(--ac)}.dots .dc span{font-size:9.5px;color:var(--mu);line-height:1}
+.hero-card{margin-top:32px;max-width:380px;padding:16px;border:1px solid var(--bd);border-radius:12px;background:var(--card)}.hc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd);font-size:13.5px}.hc-dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--bd);flex-shrink:0}.hc-dot.on{background:var(--ac);border-color:var(--ac)}
+main{padding-bottom:96px}.fab{right:20px;bottom:20px}@media(max-width:800px){main{padding-bottom:84px}}
+.settings .card .row.wrap{margin-top:10px}

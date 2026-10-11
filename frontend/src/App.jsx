@@ -8,8 +8,8 @@ export default function App() {
   const [name, setName] = useState(localStorage.getItem("token") ? localStorage.getItem("name") : null);
   const [tab, setTab] = useState("home"), [menu, setMenu] = useState(false), [pal, setPal] = useState(false), [palInit, setPalInit] = useState(""), [rev, setRev] = useState(0);
   const [open, setOpen] = useState(false), [notice, setNotice] = useState(""), [fab, setFab] = useState(false), [xp, setXp] = useState(null), [undo, setUndo] = useState(null), [rail, setRail] = useState(localStorage.getItem("rail") === "1");
-  const [theme, setTheme] = useState(localStorage.getItem("theme") || "dark"), [accent, setAccent] = useState(localStorage.getItem("accent") || "emerald");
-  useEffect(() => { document.documentElement.dataset.theme = theme; localStorage.setItem("theme", theme); }, [theme]);
+  const [theme, setTheme] = useState(localStorage.getItem("theme") || "system"), [accent, setAccent] = useState(localStorage.getItem("accent") || "emerald");
+  useEffect(() => { const mq = matchMedia("(prefers-color-scheme: dark)"), apply = () => { document.documentElement.dataset.theme = theme === "system" ? (mq.matches ? "dark" : "light") : theme; }; apply(); localStorage.setItem("theme", theme); mq.addEventListener("change", apply); return () => mq.removeEventListener("change", apply); }, [theme]);
   useEffect(() => { document.documentElement.dataset.accent = accent; localStorage.setItem("accent", accent); }, [accent]);
   useEffect(() => { const k = (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setPalInit(""); setPal((p) => !p); return; }
     const typing = /INPUT|TEXTAREA|SELECT/.test(document.activeElement?.tagName || "");
@@ -26,7 +26,7 @@ export default function App() {
   const logout = () => { const rt = localStorage.getItem("refresh"); if (rt) api("/auth/logout/", { method: "POST", body: { refresh: rt } }).catch(() => {}); ["token", "refresh", "name"].forEach((k) => localStorage.removeItem(k)); setMenu(false); setName(null); setXp(null); };
   const toast = notice && <div className="toast" onClick={() => setNotice("")}>{notice}</div>, resetToken = new URLSearchParams(location.search).get("reset");
   if (resetToken || !name) return <>{toast}<Auth onLogin={setName} resetToken={resetToken} /></>;
-  const go = (t) => { setTab(t); setMenu(false); setOpen(false); }, openPal = (init) => { setPalInit(init); setPal(true); setFab(false); }, flip = () => setTheme(theme === "dark" ? "light" : "dark"), lv = level(xp ?? 0);
+  const eff = theme === "system" ? (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light") : theme, go = (t) => { setTab(t); setMenu(false); setOpen(false); }, openPal = (init) => { setPalInit(init); setPal(true); setFab(false); }, flip = () => setTheme(eff === "dark" ? "light" : "dark"), lv = level(xp ?? 0);
   return (<div className={"shell " + (rail ? "rail" : "")}><div className="topbar"><button className="burger" onClick={() => setOpen(!open)}><Icon name="menu" /></button><div className="logo">Orbit<span>ly</span></div></div>
     {open && <div className="scrim" onClick={() => setOpen(false)} />}
     <aside className={open ? "open" : ""}><div className="logo">Orbit<span>ly</span></div>
@@ -34,11 +34,11 @@ export default function App() {
         {items.map(([k, ic, l]) => <button key={k} className={"nav " + (tab === k ? "on" : "")} onClick={() => go(k)}><Icon name={ic} />{l}</button>)}</div>)}
       <div className="grow" />
       {menu && <div className="menu"><button onClick={() => go("profile")}><Icon name="user" /> Profile</button><button onClick={() => go("settings")}><Icon name="sliders" /> Settings</button>
-        <button onClick={flip}>{theme === "dark" ? <><Icon name="sun" /> Light mode</> : <><Icon name="moon" /> Dark mode</>}</button><button className="red" onClick={logout}><Icon name="logout" /> Log out</button></div>}
+        <button onClick={flip}>{eff === "dark" ? <><Icon name="sun" /> Light mode</> : <><Icon name="moon" /> Dark mode</>}</button><button className="red" onClick={logout}><Icon name="logout" /> Log out</button></div>}
       <button className="me" onClick={() => setMenu(!menu)}><span className="avatar sm">{(name || "?")[0].toUpperCase()}</span>
         <span className="mcol"><b>{name}</b><small>Lv {lv.l} · {lv.name}</small><span className="xp"><i style={{ width: lv.pct + "%" }} /></span></span></button></aside>
     <main><div className="toolbar"><div className="row"><button className="icon-pill collapse" title="Collapse sidebar" onClick={() => { const v = !rail; setRail(v); localStorage.setItem("rail", v ? "1" : "0"); }}><Icon name={rail ? "chevron-right" : "chevron-left"} /></button><span className="muted tdate">{new Date().toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "long" })}</span></div>
-      <div className="row"><button className="pill" onClick={() => openPal("")}><Icon name="search" /> <span>Search or command</span><kbd>Ctrl K</kbd></button><button className="icon-pill" onClick={flip} title="Toggle theme"><Icon name={theme === "dark" ? "sun" : "moon"} /></button></div></div>
+      <div className="row"><button className="pill" onClick={() => openPal("")}><Icon name="search" /> <span>Search or command</span><kbd>Ctrl K</kbd></button><button className="icon-pill" onClick={flip} title="Toggle theme"><Icon name={eff === "dark" ? "sun" : "moon"} /></button></div></div>
       <div className="page" key={tab + rev}>{tab === "home" ? <Home key={rev} name={name} go={go} /> : tab === "journal" ? <Journal /> : tab === "analytics" ? <Analytics /> : tab === "profile" ? <Profile />
         : tab === "settings" ? <Settings theme={theme} setTheme={setTheme} accent={accent} setAccent={setAccent} onName={setName} logout={logout} /> : <Module key={tab + rev} kind={tab} />}</div></main>
     {toast}{undo && <div className="toast undo"><span>{undo.msg}</span><button onClick={async () => { await undo.fn(); setUndo(null); }}>Undo</button></div>}{pal && <Palette initial={palInit} onClose={() => setPal(false)} onDone={(t) => { setTab(t); setRev((r) => r + 1); }} toggleTheme={flip} logout={logout} />}

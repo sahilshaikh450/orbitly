@@ -4,6 +4,7 @@ const COLS = [["TODO", "To Do"], ["IN_PROGRESS", "In Progress"], ["DONE", "Done"
 const SUBS = [["tx", "Transactions"], ["accounts", "Accounts"], ["goals", "Savings Goals"], ["split", "Split Tracker"], ["recurring", "Recurring"], ["budget", "Budgets"], ["emi", "EMI Calculator"]];
 export default function Module({ kind }) {
   const cfg = CFG[kind], C = cur(), now = new Date().toISOString().slice(0, 10);
+  const ymdL = (n = 0) => { const d = new Date(Date.now() + n * 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
   const [items, setItems] = useState([]), [tpls, setTpls] = useState([]), [modal, setModal] = useState(null), [form, setForm] = useState({}),
     [sel, setSel] = useState(null), [flt, setFlt] = useState("ALL"), [q, setQ] = useState(""), [sub, setSub] = useState("tx"), [detail, setDetail] = useState(null), [view, setView] = useState("board"), [mon, setMon] = useState(new Date().getFullYear() + "-" + String(new Date().getMonth() + 1).padStart(2, "0")), [sort, setSort] = useState("new"), [quick, setQuick] = useState(""), [loaded, setLoaded] = useState(false), [fz, setFz] = useState(0);
   const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); if (kind === "habits") api("/profile/").then((p) => setFz(p.freezes)).catch(() => {}); });
@@ -30,6 +31,9 @@ export default function Module({ kind }) {
     try { await patch(Number(modal.split(":")[1]), b); setModal(null); } catch (x) { alert(x.message); } };
   const sorter = (a) => (sort === "streak" ? [...a].sort((x, y) => y.streak - x.streak) : sort === "name" ? [...a].sort((x, y) => x.name.localeCompare(y.name)) : a);
   const delBtn = (id) => <button className="icon-btn" onClick={() => del(id)}><Icon name="trash" /></button>;
+  const grp = []; [...shown].sort((a, b) => (b.date || "").localeCompare(a.date || "") || b.id - a.id).forEach((x) => { const g = grp[grp.length - 1]; if (g && g.date === x.date) g.rows.push(x); else grp.push({ date: x.date, rows: [x] }); });
+  const dayLabel = (d) => (d === ymdL(0) ? "Today" : d === ymdL(-1) ? "Yesterday" : new Date(d + "T00:00:00").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }));
+  const dayNet = (rows) => { const n = rows.reduce((s, x) => s + (x.type === "INCOME" ? 1 : -1) * Number(x.amount), 0); return (n < 0 ? "−" : "+") + C + Math.abs(n).toLocaleString("en-IN"); };
   const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
   return (<div>
     <div className="head"><div><h1><span className="h-ic"><Icon name={cfg.icon} /></span>{cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
@@ -52,12 +56,12 @@ export default function Module({ kind }) {
     {kind === "habits" && <div className="grid">{sorter(shown).map((h) => <div className="card habit" key={h.id}>
       <div className="big">{h.icon}</div><div className="grow"><b className="link" onClick={() => setDetail(h)}>{h.name}</b><div className="muted small">{h.description}</div>
         <div className="tags">{h.frequency !== "DAILY" && <span className="tag">{h.frequency}</span>}<span className="tag">{CI[h.category] || ""} {h.category}</span><span className="tag fire"><Icon name="flame" size={12} /> {h.streak}</span><span className={"tag " + (h.week.filter(Boolean).length >= h.weekly_target ? "met" : "")}>{h.week.filter(Boolean).length}/{h.weekly_target} this week</span>{!h.week[5] && h.week[4] && !h.done_today && fz > 0 && !(h.frozen || []).includes(ydayStr) && <button className="chip ice" onClick={() => freezeIt(h.id, ydayStr)}>Save streak</button>}</div>
-        <div className="dots" title="Last 7 days">{h.week.map((d, i) => <i key={i} className={d ? "on" : ""} />)}</div></div>
+        <div className="dots" title="Last 7 days">{h.week.map((d, i) => <div key={i} className={"dc" + (d ? " on" : "")}><i /><span>{"SMTWTFS"[new Date(Date.now() - (6 - i) * 864e5).getDay()]}</span></div>)}</div></div>
       <button className={"check " + (h.done_today ? "done" : "")} onClick={(e) => { if (!h.done_today) confetti(e.clientX, e.clientY); check(h.id); }}>{h.done_today ? <Icon name="check" /> : null}</button><button className="icon-btn" title="Edit" onClick={() => openEdit(h)}><Icon name="edit" /></button>{delBtn(h.id)}</div>)}</div>}
     {kind === "expenses" && <>
-      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{Math.round(v).toLocaleString("en-IN")}</em></div>)}</div>}
-      <div className="list">{shown.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.date} · {x.payment_method}</div></div>
-        <span className="tag">{CI[x.category] || ""} {x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{Number(x.amount).toLocaleString("en-IN")}</b>{delBtn(x.id)}</div>)}</div></>}
+      <Trend items={items} reload={load} />{cats.length > 0 && <div className="card"><b>Spending by category</b>{cats.map(([c, v]) => <div className="bar" key={c}><span>{c.charAt(0) + c.slice(1).toLowerCase()}</span><div><i style={{ width: (v / cats[0][1]) * 100 + "%" }} /></div><em>{C}{Math.round(v).toLocaleString("en-IN")}</em></div>)}</div>}
+      <div className="groups">{grp.map((g) => <section key={g.date}><div className="gh"><span>{dayLabel(g.date)}</span><span>{dayNet(g.rows)}</span></div><div className="list">{g.rows.map((x) => <div className="card rowi" key={x.id}><div className="grow"><b>{x.title}</b><div className="muted small">{x.payment_method}</div></div>
+        <span className="tag">{CI[x.category] || ""} {x.category}</span><b className={x.type === "INCOME" ? "inc" : "exp"}>{x.type === "INCOME" ? "+" : "−"}{C}{Number(x.amount).toLocaleString("en-IN")}</b>{delBtn(x.id)}</div>)}</div></section>)}</div></>}
     {kind === "todos" && <><Focus tasks={items} onDone={load} />
       <div className="row wrap"><input className="quick" placeholder="Quick add a task and press Enter" value={quick} onChange={(e) => setQuick(e.target.value)}
         onKeyDown={(e) => { if (e.key === "Enter" && quick.trim()) { create({ title: quick.trim(), priority: "MEDIUM", status: "TODO" }); setQuick(""); } }} />
@@ -83,7 +87,7 @@ export default function Module({ kind }) {
         <button className="btn primary wide" disabled={sel === null} onClick={() => create(tpls[sel])}>{sel === null ? "Select a template first" : "Add selected template"}</button></>
       : <form onSubmit={submitForm}>
         {cfg.fields.map(([k, l, type, , o]) => <label key={k}>{l}{type === "select" ? <select value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })}>{o.map((x) => <option key={x}>{x}</option>)}</select>
-          : <input type={type} value={form[k]} required={["title", "name", "amount"].includes(k)} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />}</label>)}
+          : <input type={type} value={form[k]} required={["title", "name", "amount"].includes(k)} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />}{k === "due_date" && <div className="chips" style={{ margin: "0 0 10px" }}>{[["Today", 0], ["Tomorrow", 1], ["Next week", 7]].map(([n, d]) => <button type="button" key={n} className="chip" onClick={() => setForm({ ...form, due_date: ymdL(d) })}>{n}</button>)}</div>}</label>)}
         <button className="btn primary wide">Save</button></form>}</div></div>}
   </div>);
 }
