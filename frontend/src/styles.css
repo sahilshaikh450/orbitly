@@ -133,3 +133,7 @@ input[type=checkbox]:checked::after{content:"";width:8px;height:4px;border-left:
 main{padding-bottom:96px}.fab{right:20px;bottom:20px}@media(max-width:800px){main{padding-bottom:84px}}
 .settings .card .row.wrap{margin-top:10px}
 .chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx);margin:6px 0}.tpl{position:relative}.tpl-x{position:absolute;right:6px;top:6px;width:24px;height:24px}
+
+/* smart categorization */
+.sug{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;padding:7px 10px;border:1px solid color-mix(in srgb,var(--ac) 35%,var(--bd));background:color-mix(in srgb,var(--ac) 7%,transparent);border-radius:8px;font-size:12.5px;color:var(--tx)}
+.sug .ico{width:14px;height:14px;color:var(--ac2);flex-shrink:0}.sug>span{flex:1}.sug .chip{height:24px}.model-note{display:flex;align-items:center;gap:8px;color:var(--mu);font-size:12.5px;margin:2px 0 12px}.model-note .ico{width:14px;height:14px;color:var(--ac2)}

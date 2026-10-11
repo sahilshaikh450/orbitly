@@ -24,3 +24,10 @@ EMAIL_HOST, EMAIL_PORT, EMAIL_HOST_USER, EMAIL_HOST_PASSWORD, DEFAULT_FROM_EMAIL
 
 ## Run locally after this update
 cd backend && python manage.py migrate && python manage.py runserver
+
+## Smart expense categorization (ML)
+`backend/core/ml.py` is a Multinomial Naive Bayes classifier written from scratch (no ML library).
+It starts with a built-in keyword list and learns from each user's own transactions, so suggestions get more personal over time.
+- `GET /api/expenses/suggest/?title=Swiggy dinner` returns the category, confidence, alternatives and the words that drove the decision.
+- `GET /api/expenses/model/` returns how many transactions it learned from and a leave-one-out accuracy estimate.
+- Run the unit tests: `cd backend && python manage.py test core` (or `python -m unittest core.test_ml -v`).
