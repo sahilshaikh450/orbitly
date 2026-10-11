@@ -132,3 +132,4 @@ input[type=checkbox]:checked::after{content:"";width:8px;height:4px;border-left:
 .hero-card{margin-top:32px;max-width:380px;padding:16px;border:1px solid var(--bd);border-radius:12px;background:var(--card)}.hc-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--bd);font-size:13.5px}.hc-dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--bd);flex-shrink:0}.hc-dot.on{background:var(--ac);border-color:var(--ac)}
 main{padding-bottom:96px}.fab{right:20px;bottom:20px}@media(max-width:800px){main{padding-bottom:84px}}
 .settings .card .row.wrap{margin-top:10px}
+.chk{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--tx);margin:6px 0}.tpl{position:relative}.tpl-x{position:absolute;right:6px;top:6px;width:24px;height:24px}

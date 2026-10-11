@@ -10,7 +10,7 @@ export default function Module({ kind }) {
   const load = () => api(`/${kind}/`).then((r) => { setItems(r); setLoaded(true); if (kind === "habits") api("/profile/").then((p) => setFz(p.freezes)).catch(() => {}); });
   useEffect(() => { if (kind === "expenses") api("/recurring/run/", { method: "POST" }).finally(load); else load(); api(`/templates/${kind}/`).then(setTpls); }, []);
   const create = async (d) => { const b = { ...d }; Object.keys(b).forEach((k) => b[k] === "" && delete b[k]);
-    if (kind === "expenses" && !b.date) b.date = now; try { await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); } catch (x) { alert(x.message); } };
+    if (kind === "expenses" && !b.date) b.date = now; try { await api(`/${kind}/`, { method: "POST", body: b }); setModal(null); setSel(null); load(); return true; } catch (x) { alert(x.message); return false; } };
   const del = async (id) => { const it = items.find((x) => x.id === id); await api(`/${kind}/${id}/`, { method: "DELETE" }); load();
     if (it) undoable(`${cfg.noun} deleted`, async () => { const b = {}; [...cfg.fields.map((f) => f[0]), "subtasks"].forEach((k) => { if (it[k] !== undefined && it[k] !== null && it[k] !== "") b[k] = it[k]; }); await api(`/${kind}/`, { method: "POST", body: b }); load(); }); };
   const patch = async (id, body) => { await api(`/${kind}/${id}/`, { method: "PATCH", body }); load(); };
@@ -23,6 +23,17 @@ export default function Module({ kind }) {
   const shown = mi.filter((i) => (flt === "ALL" || i[fk] === flt) && ((i.name || i.title) + " " + (i.tags || "") + " " + (i.description || "")).toLowerCase().includes(q.toLowerCase()));
   const ydayStr = (() => { const d = new Date(Date.now() - 864e5); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; })();
   const freezeIt = async (id, date) => { try { await api(`/habits/${id}/freeze/`, { method: "POST", body: { date } }); load(); } catch (e) { alert(e.message); } };
+  const MKEY = "orbitly:tpl:" + kind;
+  const [mine, setMine] = useState(() => { try { return JSON.parse(localStorage.getItem(MKEY) || "[]"); } catch (e) { return []; } }), [tf, setTf] = useState(null), [saveTpl, setSaveTpl] = useState(false);
+  const allTpls = [...mine.map((t) => ({ ...t, _mine: true })), ...tpls];
+  const fieldsUI = (vals, setVals) => cfg.fields.map(([k, l, type, , o]) => <label key={k}>{l}{type === "select" ? <select value={vals[k]} onChange={(e) => setVals({ ...vals, [k]: e.target.value })}>{o.map((x) => <option key={x} value={x}>{x === "UPI" ? x : x.charAt(0) + x.slice(1).toLowerCase().replace("_", " ")}</option>)}</select>
+          : <input type={type} value={vals[k]} autoFocus={k === "amount"} onFocus={(e) => k === "amount" && e.target.select()} required={["title", "name", "amount"].includes(k)} onChange={(e) => setVals({ ...vals, [k]: e.target.value })} />}{k === "due_date" && <div className="chips" style={{ margin: "0 0 10px" }}>{[["Today", 0], ["Tomorrow", 1], ["Next week", 7]].map(([n, d]) => <button type="button" key={n} className="chip" onClick={() => setVals({ ...vals, due_date: ymdL(d) })}>{n}</button>)}</div>}</label>);
+  const pickTpl = (t) => { const { _mine, ...rest } = t; setTf({ ...Object.fromEntries(cfg.fields.map((f) => [f[0], f[3]])), ...rest }); setSaveTpl(false); };
+  const delMine = (i) => { const nm = mine.filter((_, j) => j !== i); setMine(nm); localStorage.setItem(MKEY, JSON.stringify(nm)); };
+  const addTpl = async (e) => { e.preventDefault(); const b = { ...tf };
+    if (saveTpl) { const keep = {}; cfg.fields.forEach(([k]) => { if (b[k] !== "" && b[k] !== undefined && k !== "date" && k !== "due_date") keep[k] = b[k]; });
+      const nm = [keep, ...mine.filter((x) => (x.name || x.title) !== (keep.name || keep.title))].slice(0, 20); setMine(nm); localStorage.setItem(MKEY, JSON.stringify(nm)); }
+    if (await create(b)) setTf(null); };
   const pin = async (t) => { try { await patch(t.id, { pinned: !t.pinned }); } catch (e) { alert(e.message); } };
   const openEdit = (it) => { setForm(Object.fromEntries(cfg.fields.map((f) => [f[0], it[f[0]] ?? ""]))); setModal("edit:" + it.id); };
   const submitForm = async (e) => { e.preventDefault();
@@ -37,7 +48,7 @@ export default function Module({ kind }) {
   const cats = kind === "expenses" ? Object.entries(mi.filter((i) => i.type === "EXPENSE").reduce((m, i) => ((m[i.category] = (m[i.category] || 0) + Number(i.amount)), m), {})).sort((a, b) => b[1] - a[1]) : [];
   return (<div>
     <div className="head"><div><h1><span className="h-ic"><Icon name={cfg.icon} /></span>{cfg.title}</h1><p className="muted">{cfg.sub}</p></div>
-      {main && <div className="row"><button className="btn ghost" onClick={() => setModal("tpl")}>Templates</button><button className="btn primary" onClick={openNew}><Icon name="plus" /> New {cfg.noun}</button></div>}</div>
+      {main && <div className="row"><button className="btn ghost" onClick={() => { setTf(null); setModal("tpl"); }}>Templates</button><button className="btn primary" onClick={openNew}><Icon name="plus" /> New {cfg.noun}</button></div>}</div>
     {kind === "expenses" && <div className="tabs">{SUBS.map(([k, l]) => <button key={k} className={sub === k ? "on" : ""} onClick={() => setSub(k)}>{l}</button>)}</div>}
     {kind === "expenses" && sub === "goals" && <Goals expenses={items} />}
     {kind === "expenses" && sub === "split" && <Splits />}
@@ -76,18 +87,22 @@ export default function Module({ kind }) {
             <input className="mini" placeholder="+ Add subtask" onKeyDown={(e) => { if (e.key === "Enter" && e.target.value.trim()) { patch(t.id, { subtasks: [...sb, { t: e.target.value.trim(), done: false }] }); e.target.value = ""; } }} /></div>
           <div className="row sp"><button className="icon-btn" disabled={ci === 0} onClick={() => patch(t.id, { status: COLS[ci - 1][0] })}><Icon name="chevron-left" /></button><button className={"icon-btn pin " + (t.pinned ? "on" : "")} title={t.pinned ? "Remove from today's focus" : "Focus today"} onClick={() => pin(t)}><Icon name="star" /></button>{delBtn(t.id)}
             <button className="icon-btn" disabled={ci === 2} onClick={() => patch(t.id, { status: COLS[ci + 1][0] })}><Icon name="chevron-right" /></button></div></div>; })}</div>)}</div>}
-    {loaded && items.length === 0 && <div className="empty"><div className="e-ic"><Icon name={cfg.icon} /></div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => setModal("tpl")}>Browse templates</button></div>}</>}
+    {loaded && items.length === 0 && <div className="empty"><div className="e-ic"><Icon name={cfg.icon} /></div><h3>Nothing here yet</h3><p className="muted">Start from a ready-made template or create your own.</p><button className="btn primary" onClick={() => { setTf(null); setModal("tpl"); }}>Browse templates</button></div>}</>}
     {detail && <HabitDetail h={items.find((x) => x.id === detail.id) || detail} onClose={() => setDetail(null)} freezes={fz} onFreeze={(date) => freezeIt(detail.id, date)} onToggle={async (date) => { await api(`/habits/${detail.id}/check/`, { method: "POST", body: { date } }); load(); }} />}
     {modal && <div className="overlay" onClick={() => setModal(null)}><div className="modal" onClick={(e) => e.stopPropagation()}>
-      <div className="row sp"><h2>{modal === "tpl" ? `${cfg.noun} Templates` : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}><Icon name="x" /></button></div>
-      {modal === "tpl" ? <><p className="muted">Choose a template to get started quickly</p>
-        <div className="tpl-grid">{tpls.map((t, i) => <div key={i} className={"card tpl " + (sel === i ? "sel" : "")} onClick={() => setSel(i)}>
+      <div className="row sp"><h2>{modal === "tpl" ? (tf ? `Edit ${cfg.noun.toLowerCase()} details` : `${cfg.noun} Templates`) : `${modal === "new" ? "New" : "Edit"} ${cfg.noun}`}</h2><button className="icon-btn" onClick={() => setModal(null)}><Icon name="x" /></button></div>
+      {modal === "tpl" ? (tf ? <form onSubmit={addTpl}>
+        <p className="muted" style={{ marginBottom: 12 }}>Change anything before adding. The template is only a starting point.</p>
+        {fieldsUI(tf, setTf)}
+        <label className="chk"><input type="checkbox" checked={saveTpl} onChange={(e) => setSaveTpl(e.target.checked)} /> Save my changes as a new template</label>
+        <div className="row" style={{ marginTop: 14 }}><button type="button" className="btn" onClick={() => setTf(null)}>Back</button><button className="btn primary grow">Add {cfg.noun.toLowerCase()}</button></div></form>
+      : <><p className="muted">Pick a template, then edit the details before adding.</p>
+        <div className="tpl-grid">{allTpls.map((t, i) => <div key={i} className="card tpl" onClick={() => pickTpl(t)}>
+          {t._mine && <button type="button" className="icon-btn tpl-x" title="Delete my template" onClick={(e) => { e.stopPropagation(); delMine(i); }}><Icon name="x" /></button>}
           <b>{t.name || t.title}</b><div className="muted small">{t.description || (t.amount ? C + t.amount : "")}</div>
-          <div className="tags"><span className="tag">{t.frequency || t.type || t.priority}</span><span className="tag">{t.category || t.tags}</span></div></div>)}</div>
-        <button className="btn primary wide" disabled={sel === null} onClick={() => create(tpls[sel])}>{sel === null ? "Select a template first" : "Add selected template"}</button></>
+          <div className="tags">{t._mine && <span className="tag fire">mine</span>}<span className="tag">{t.frequency || t.type || t.priority}</span><span className="tag">{t.category || t.tags}</span></div></div>)}</div></>)
       : <form onSubmit={submitForm}>
-        {cfg.fields.map(([k, l, type, , o]) => <label key={k}>{l}{type === "select" ? <select value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })}>{o.map((x) => <option key={x}>{x}</option>)}</select>
-          : <input type={type} value={form[k]} required={["title", "name", "amount"].includes(k)} onChange={(e) => setForm({ ...form, [k]: e.target.value })} />}{k === "due_date" && <div className="chips" style={{ margin: "0 0 10px" }}>{[["Today", 0], ["Tomorrow", 1], ["Next week", 7]].map(([n, d]) => <button type="button" key={n} className="chip" onClick={() => setForm({ ...form, due_date: ymdL(d) })}>{n}</button>)}</div>}</label>)}
+        {fieldsUI(form, setForm)}
         <button className="btn primary wide">Save</button></form>}</div></div>}
   </div>);
 }
