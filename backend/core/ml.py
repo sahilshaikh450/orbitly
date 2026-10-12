@@ -125,3 +125,125 @@ def loo_accuracy(rows, cap=300):
             seen += 1
             hit += res[0][0][0] == cat
     return round(hit / seen, 3) if seen else None
+
+
+# ---------------------------------------------------------------------------------------------
+# Spending forecast and unusual-spend detection
+# ---------------------------------------------------------------------------------------------
+import calendar
+import statistics
+from datetime import date, timedelta
+
+LUMPY = {"HOME", "BILLS", "INVEST"}   # rent, bills, SIPs: big, rare, not extrapolated day by day
+MIN_SAMPLES = 5
+MIN_RATIO = 2.0                        # must be at least twice the category median
+Z_LIMIT = 3.5                          # modified z-score limit (Iglewicz & Hoaglin)
+
+
+def category_stats(rows):
+    """Median and MAD (median absolute deviation) of expense amounts per category."""
+    by = defaultdict(list)
+    for r in rows:
+        by[r["category"]].append(float(r["amount"]))
+    out = {}
+    for cat, xs in by.items():
+        if len(xs) >= MIN_SAMPLES:
+            med = statistics.median(xs)
+            out[cat] = (med, statistics.median(abs(x - med) for x in xs))
+    return out
+
+
+def unusual(amount, stat):
+    """Return (is_unusual, ratio_to_median). Robust to outliers because it uses median and MAD, not mean and std."""
+    med, mad = stat
+    ratio = amount / med if med else 0
+    if ratio < MIN_RATIO:
+        return False, ratio
+    z = 0.6745 * (amount - med) / mad if mad else float("inf")
+    return z > Z_LIMIT, ratio
+
+
+def check_amount(category, amount, rows):
+    stat = category_stats(rows).get(category)
+    if not stat:
+        return {"enough": False, "unusual": False, "median": None, "ratio": None}
+    flag, ratio = unusual(float(amount), stat)
+    return {"enough": True, "unusual": flag, "median": round(stat[0], 2), "ratio": round(ratio, 1)}
+
+
+def _month_shift(d, n):
+    m = d.month - 1 + n
+    return date(d.year + m // 12, m % 12 + 1, 1)
+
+
+def insights(rows, today=None, window_days=90):
+    """rows: expense dicts with id, title, category, amount, date. Returns {"forecast": ..., "anomalies": [...]}."""
+    today = today or date.today()
+    rows = [dict(r, amount=float(r["amount"])) for r in rows if r["date"] <= today]
+    stats = category_stats(rows)
+
+    flagged, anomalies = set(), []
+    for r in rows:
+        stat = stats.get(r["category"])
+        if stat:
+            flag, ratio = unusual(r["amount"], stat)
+            if flag:
+                flagged.add(r["id"])
+                if r["date"] >= today - timedelta(days=window_days):
+                    anomalies.append({"id": r["id"], "title": r["title"], "category": r["category"], "amount": r["amount"],
+                                      "date": str(r["date"]), "ratio": round(ratio, 1), "usual": round(stat[0], 2)})
+    anomalies.sort(key=lambda a: (a["date"], a["ratio"]), reverse=True)
+
+    dim = calendar.monthrange(today.year, today.month)[1]
+    first = today.replace(day=1)
+    this_month = [r for r in rows if r["date"] >= first]
+    spent = sum(r["amount"] for r in this_month)
+    lumpy_spent = sum(r["amount"] for r in this_month if r["category"] in LUMPY)
+
+    # daily series of ordinary (non-lumpy, non-anomalous) spending
+    base = [0.0] * today.day
+    for r in this_month:
+        if r["category"] not in LUMPY and r["id"] not in flagged:
+            base[r["date"].day - 1] += r["amount"]
+    mean_all = sum(base) / len(base)
+    last7 = base[-7:]
+    rate = mean_all if today.day < 10 else 0.5 * mean_all + 0.5 * (sum(last7) / len(last7))
+    if today.day < 3:  # too early to trust this month: lean on last month
+        prev = _month_shift(first, -1)
+        pdim = calendar.monthrange(prev.year, prev.month)[1]
+        prev_ord = sum(r["amount"] for r in rows if prev <= r["date"] < first and r["category"] not in LUMPY and r["id"] not in flagged)
+        rate = prev_ord / pdim if prev_ord else rate
+
+    # expected bills: average lumpy total of the previous (up to) 3 months
+    totals = []
+    for k in (-1, -2, -3):
+        a, b = _month_shift(first, k), _month_shift(first, k + 1)
+        t = sum(r["amount"] for r in rows if a <= r["date"] < b and r["category"] in LUMPY)
+        if t:
+            totals.append(t)
+    expected_lumpy = sum(totals) / len(totals) if totals else lumpy_spent
+    upcoming = max(0.0, expected_lumpy - lumpy_spent)
+
+    days_left = dim - today.day
+    daily_part = rate * days_left
+    projected = spent + daily_part + upcoming
+    std = statistics.stdev(base) if len(base) > 2 else 0.0
+    band = 1.28 * std * math.sqrt(days_left)              # roughly an 80% interval for the daily part
+    prev_month = [r["amount"] for r in rows if _month_shift(first, -1) <= r["date"] < first]
+    last_total = sum(prev_month)
+
+    cum, actual = 0.0, []
+    for i in range(today.day):
+        cum += sum(r["amount"] for r in this_month if r["date"].day == i + 1)
+        actual.append(round(cum, 2))
+    path = [round(spent + rate * i + (upcoming * i / days_left if days_left else 0), 2) for i in range(days_left + 1)]
+    return {
+        "forecast": {
+            "day": today.day, "days_in_month": dim, "spent": round(spent, 2), "projected": round(projected, 2),
+            "low": round(max(spent, projected - band), 2), "high": round(projected + band, 2), "daily_rate": round(rate, 2), "days_left": days_left,
+            "breakdown": {"so_far": round(spent, 2), "daily_spending": round(daily_part, 2), "upcoming_bills": round(upcoming, 2)},
+            "last_month": round(last_total, 2), "vs_last_month_pct": round((projected - last_total) * 100 / last_total, 1) if last_total else None,
+            "series": {"actual": actual, "projected": path},
+        },
+        "anomalies": anomalies[:5],
+    }

@@ -4,7 +4,7 @@ const Q = ["Small steps every day.", "Discipline beats motivation.", "Done is be
 const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 export default function Home({ name, go }) {
   const [d, setD] = useState(null), C = cur();
-  const load = async () => { const [h, t, e, g, p, rc, bg] = await Promise.all(["habits", "todos", "expenses", "goals", "profile", "recurring", "budgets"].map((k) => api(`/${k}/`))); setD({ h, t, e, g, p, rc, bg }); };
+  const load = async () => { const [h, t, e, g, p, rc, bg, fc] = await Promise.all(["habits", "todos", "expenses", "goals", "profile", "recurring", "budgets", "expenses/insights"].map((k) => api(`/${k}/`))); setD({ h, t, e, g, p, rc, bg, fc }); };
   useEffect(() => { load(); }, []);
   if (!d) return <Skel />;
   const now = new Date(), today = ymd(now), month = today.slice(0, 7), hr = now.getHours();
@@ -27,6 +27,7 @@ export default function Home({ name, go }) {
   if (top) ins.push(`Top spending category this month: ${top[0]} (${C}${Math.round(top[1])})`);
   if (inc > 0) ins.push(`Savings rate this month: ${Math.round(((inc - exp) * 100) / inc)}%`);
   ins.push(`${wkItems.filter((i) => i.kind === "TASK").length} tasks and ${wkItems.filter((i) => i.kind === "HABIT").length} habit check-ins in the last 7 days`);
+  if (d.fc.anomalies.length) ins.push(`Unusual spend: ${d.fc.anomalies[0].title} (${C}${Math.round(d.fc.anomalies[0].amount).toLocaleString("en-IN")}, ${d.fc.anomalies[0].ratio}× your usual ${cap(d.fc.anomalies[0].category)})`);
   if (best && best.rate30 > 0) ins.push(`Most consistent habit: ${best.name} (${best.rate30}% over 30 days)`);
   return (<div className="bento"><div className="head"><div><h1>{hr < 12 ? "Good morning" : hr < 18 ? "Good afternoon" : "Good evening"}, {name} </h1>
     <p className="muted">“{Q[now.getDate() % Q.length]}”</p></div></div>
@@ -66,5 +67,6 @@ export default function Home({ name, go }) {
         {d.g.slice(0, 4).map((g) => { const p = Math.min(100, Math.round((g.saved / g.target) * 100)); return <div key={g.id} style={{ marginTop: 10 }}><div className="row sp small"><span>{g.name}</span><b>{p}%</b></div><div className="prog"><i style={{ width: p + "%" }} /></div></div>; })}</div>
       <div className="card"><b className="ch"><Icon name="wallet" />This month</b><div className="act"><span className="grow">Income</span><b className="inc">+{C}{Math.round(inc).toLocaleString("en-IN")}</b></div>
         <div className="act"><span className="grow">Expenses</span><b className="exp">−{C}{Math.round(exp).toLocaleString("en-IN")}</b></div>
+        <div className="act"><span className="grow">Projected month-end spend</span><b>{C}{Math.round(d.fc.forecast.projected).toLocaleString("en-IN")}</b></div>
         <div className="act"><span className="grow">Activities logged (all time)</span><b>{d.p.total}</b></div></div></div></div>);
 }

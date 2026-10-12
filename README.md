@@ -30,4 +30,6 @@ cd backend && python manage.py migrate && python manage.py runserver
 It starts with a built-in keyword list and learns from each user's own transactions, so suggestions get more personal over time.
 - `GET /api/expenses/suggest/?title=Swiggy dinner` returns the category, confidence, alternatives and the words that drove the decision.
 - `GET /api/expenses/model/` returns how many transactions it learned from and a leave-one-out accuracy estimate.
+- `GET /api/expenses/insights/` returns a month-end spending forecast (with an 80% range and a breakdown into spent so far, daily spending ahead and bills still expected) plus unusual-spend detection using median/MAD robust statistics.
+- `GET /api/expenses/check/?category=FOOD&amount=3000` tells the transaction form, live, if an amount is unusually high for that category.
 - Run the unit tests: `cd backend && python manage.py test core` (or `python -m unittest core.test_ml -v`).

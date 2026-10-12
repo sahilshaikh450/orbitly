@@ -94,6 +94,18 @@ class ExpenseViewSet(Own):
     def model(self, request):
         rows = self._history(request)
         return Response({"samples": len(rows), "personalised": len(rows) >= 10, "accuracy": ml.loo_accuracy(rows)})
+    def _expenses(self, request):
+        return list(Expense.objects.filter(user=request.user, type="EXPENSE").order_by("-date").values("id", "title", "category", "amount", "date")[:1000])
+    @action(detail=False, methods=["get"])
+    def insights(self, request):
+        """Month-end spending forecast and unusual-spend detection (see core/ml.py)."""
+        return Response(ml.insights(self._expenses(request)))
+    @action(detail=False, methods=["get"])
+    def check(self, request):
+        """Is this amount unusually high for this category? Used live in the transaction form."""
+        try: amount = float(request.query_params.get("amount", 0))
+        except ValueError: return Response({"error": "Invalid amount"}, status=400)
+        return Response(ml.check_amount(request.query_params.get("category", ""), amount, self._expenses(request)))
     @action(detail=False, methods=["post"])
     def bulk(self, request):
         rows = request.data
