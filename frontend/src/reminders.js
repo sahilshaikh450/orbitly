@@ -13,8 +13,8 @@ async function tick() {
   for (const k of ["habit", "task"]) {
     if (hm < r[k] || fired[k] === day) continue; fired[k] = day; localStorage.setItem("rfired", JSON.stringify(fired));
     try {
-      if (k === "habit") { const n = (await api("/habits/")).filter((h) => !h.done_today).length; if (n) notify("Habit reminder 💪", `${n} habit${n > 1 ? "s" : ""} still pending today. Keep your streak alive!`); }
-      else { const n = (await api("/todos/")).filter((t) => t.status !== "DONE" && t.due_date && t.due_date <= day).length; if (n) notify("Tasks due ✅", `You have ${n} task${n > 1 ? "s" : ""} due or overdue.`); }
+      if (k === "habit") { const n = (await api("/habits/")).filter((h) => !h.done_today).length; if (n) notify("Habit reminder ", `${n} habit${n > 1 ? "s" : ""} still pending today. Keep your streak alive!`); }
+      else { const n = (await api("/todos/")).filter((t) => t.status !== "DONE" && t.due_date && t.due_date <= day).length; if (n) notify("Tasks due ", `You have ${n} task${n > 1 ? "s" : ""} due or overdue.`); }
     } catch (e) {}
   }
 }

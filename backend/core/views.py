@@ -41,6 +41,10 @@ def advance(d, freq):
     if m > 12: m, y = 1, y + 1
     return date(y, m, min(d.day, calendar.monthrange(y, m)[1]))
 
+def refill(p):
+    m = date.today().strftime("%Y-%m")
+    if p.freeze_month != m: p.freezes = 2; p.freeze_month = m; p.save()
+
 def log(user, kind, text): Activity.objects.create(user=user, kind=kind, text=text[:200])
 
 class Own(viewsets.ModelViewSet):
@@ -58,9 +62,20 @@ class HabitViewSet(Own):
         except ValueError: d = date.today()
         if d > date.today(): return Response({"error": "Cannot mark future dates"}, status=400)
         l, created = HabitLog.objects.get_or_create(habit=h, date=d)
+        if not created and l.frozen: l.frozen = False; l.save(); created = True
         if created: Activity.objects.create(user=request.user, kind="HABIT", text=txt, date=d)
         else:
             l.delete(); Activity.objects.filter(user=request.user, kind="HABIT", text=txt, date=d).delete()
+        return Response(self.get_serializer(h).data)
+    @action(detail=True, methods=["post"])
+    def freeze(self, request, pk=None):
+        h = self.get_object(); p, _ = Profile.objects.get_or_create(user=request.user); refill(p); t = date.today()
+        try: d = date.fromisoformat(request.data.get("date", ""))
+        except ValueError: return Response({"error": "Invalid date"}, status=400)
+        if not t - timedelta(days=2) <= d < t: return Response({"error": "You can only freeze one of the last 2 days"}, status=400)
+        if p.freezes < 1: return Response({"error": "No streak freezes left this month"}, status=400)
+        if HabitLog.objects.filter(habit=h, date=d).exists(): return Response({"error": "That day is already marked"}, status=400)
+        HabitLog.objects.create(habit=h, date=d, frozen=True); p.freezes -= 1; p.save()
         return Response(self.get_serializer(h).data)
 
 class ExpenseViewSet(Own):
@@ -199,7 +214,7 @@ def streaks(days):
 
 @api_view(["GET", "PATCH"])
 def profile(request):
-    u = request.user; p, _ = Profile.objects.get_or_create(user=u)
+    u = request.user; p, _ = Profile.objects.get_or_create(user=u); refill(p)
     if request.method == "PATCH":
         d = request.data; u.first_name = d.get("name", u.first_name); p.bio = d.get("bio", p.bio); p.currency = d.get("currency", p.currency)
         u.save(); p.save()
@@ -211,7 +226,7 @@ def profile(request):
     for k in acts.values_list("kind", flat=True): kinds[k] = kinds.get(k, 0) + 1
     cur, best = streaks(days)
     items = [dict(id=a.id, kind=a.kind, text=a.text, date=str(a.date), time=a.created.strftime("%H:%M")) for a in acts.order_by("-created")[:400]]
-    return Response(dict(name=u.first_name, email=u.email, joined=str(u.date_joined.date()), bio=p.bio, currency=p.currency, verified=p.verified,
+    return Response(dict(name=u.first_name, email=u.email, joined=str(u.date_joined.date()), bio=p.bio, currency=p.currency, verified=p.verified, freezes=p.freezes,
         current_streak=cur, longest_streak=best, total=len(days), active_days=len(set(days)), by_day=by_day, kinds=kinds, items=items))
 
 @api_view(["GET"])

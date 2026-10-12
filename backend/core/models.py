@@ -15,6 +15,7 @@ class Habit(models.Model):
 class HabitLog(models.Model):
     habit = models.ForeignKey(Habit, related_name="logs", on_delete=models.CASCADE)
     date = models.DateField()
+    frozen = models.BooleanField(default=False)
     class Meta: unique_together = ("habit", "date")
 
 class Expense(models.Model):
@@ -37,6 +38,7 @@ class Todo(models.Model):
     subtasks = models.JSONField(default=list, blank=True)
     focus_minutes = models.IntegerField(default=0)
     repeat = models.CharField(max_length=8, default="NONE")
+    pinned = models.BooleanField(default=False)
 
 import datetime
 class Goal(models.Model):
@@ -68,6 +70,8 @@ class Profile(models.Model):
     bio = models.CharField(max_length=200, blank=True)
     currency = models.CharField(max_length=4, default="₹")
     verified = models.BooleanField(default=False)
+    freezes = models.PositiveSmallIntegerField(default=2)
+    freeze_month = models.CharField(max_length=7, blank=True)
 
 class Budget(models.Model):
     user = models.ForeignKey(U, on_delete=models.CASCADE)
