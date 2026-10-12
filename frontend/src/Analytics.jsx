@@ -5,7 +5,7 @@ const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const fmt = (n) => cur() + Math.round(n).toLocaleString("en-IN");
 export default function Analytics() {
   const [d, setD] = useState(null), [range, setRange] = useState("30");
-  useEffect(() => { Promise.all([api("/expenses/"), api("/habits/"), api("/profile/"), api("/todos/"), api("/expenses/insights/"), api("/budgets/")]).then(([e, h, p, t, ins, bg]) => setD({ e, h, p, t, ins, bg })); }, []);
+  useEffect(() => { Promise.all([api("/expenses/"), api("/habits/"), api("/profile/"), api("/todos/")]).then(([e, h, p, t]) => setD({ e, h, p, t })); }, []);
   if (!d) return <Skel />;
   const cut = range === "all" ? "0000" : ymd(new Date(Date.now() - (+range - 1) * 864e5)), inR = d.e.filter((x) => x.date >= cut);
   const exp = inR.filter((x) => x.type === "EXPENSE"), spent = exp.reduce((n, x) => n + Number(x.amount), 0), income = inR.filter((x) => x.type === "INCOME").reduce((n, x) => n + Number(x.amount), 0);
@@ -24,7 +24,6 @@ export default function Analytics() {
   const rv = { a: cnt(() => true, d7, tom), pa: cnt(() => true, d14, d7), h: cnt(isH, d7, tom), ph: cnt(isH, d14, d7), t: cnt(isT, d7, tom), pt: cnt(isT, d14, d7), s: sp(d7, tom), ps: sp(d14, d7), best: bd ? DN[new Date(bd[0] + "T00:00:00").getDay()] : null };
   const wk = Array(8).fill(0); d.p.items.forEach((a) => { if (a.kind === "TASK" && a.text.startsWith("Completed")) { const n = Math.floor((Date.now() - new Date(a.date + "T00:00:00")) / (7 * 864e5)); if (n >= 0 && n < 8) wk[7 - n]++; } }); const kmax = Math.max(1, ...wk);
   return (<div><div className="head"><div><h1><span className="h-ic"><Icon name="chart" /></span>Analytics</h1><p className="muted">See where your money, time and energy go.</p></div></div>
-    <Forecast fc={d.ins.forecast} anomalies={d.ins.anomalies} budget={d.bg.reduce((n, b) => n + Number(b.limit), 0)} />
     <div className="card review"><div className="row sp"><b>Your week in review</b><span className="muted small">last 7 days vs the 7 before</span></div>
       <div className="rv">{[["Activities", rv.a, rv.pa], ["Habit check-ins", rv.h, rv.ph], ["Tasks done", rv.t, rv.pt], ["Spent", rv.s, rv.ps, true]].map(([l, v, p, money]) => <div key={l}><span className="muted small">{l}</span><b><Num v={money ? fmt(v) : v} /></b>
         <em className={(money ? v <= p : v >= p) ? "up" : "down"}>{v === p ? "no change" : (v > p ? "▲ " : "▼ ") + (money ? fmt(Math.abs(v - p)) : Math.abs(v - p))}</em></div>)}</div>
@@ -50,29 +49,4 @@ export default function Analytics() {
         {topFocus.map((t) => <div className="bar" key={t.id}><span>{t.title.length > 16 ? t.title.slice(0, 15) + "…" : t.title}</span><div><i style={{ width: (t.focus_minutes / topFocus[0].focus_minutes) * 100 + "%" }} /></div><em>{t.focus_minutes}m</em></div>)}</div>
       <div className="card"><b>Habit consistency · last 30 days</b>{d.h.length === 0 && <p className="muted">No habits yet.</p>}
         {[...d.h].sort((a, b) => b.rate30 - a.rate30).map((h) => <div className="bar" key={h.id}><span>{h.name.length > 16 ? h.name.slice(0, 15) + "…" : h.name}</span><div><i style={{ width: h.rate30 + "%" }} /></div><em>{h.rate30}%</em></div>)}</div></div></div>);
-}
-
-function Forecast({ fc, anomalies, budget }) {
-  const dim = fc.days_in_month, ymax = Math.max(fc.high, budget || 0, 1) * 1.08, X = (d) => 40 + ((d - 1) / Math.max(dim - 1, 1)) * 540, Y = (v) => 180 - (v / ymax) * 160;
-  const act = fc.series.actual.map((v, i) => `${X(i + 1)},${Y(v)}`).join(" "), proj = fc.series.projected.map((v, i) => `${X(fc.day + i)},${Y(v)}`).join(" ");
-  const band = `${X(fc.day)},${Y(fc.spent)} ${X(dim)},${Y(fc.high)} ${X(dim)},${Y(fc.low)}`, diff = budget ? fc.projected - budget : 0, cap = (s) => s.charAt(0) + s.slice(1).toLowerCase();
-  const rows = [["Spent so far", fc.breakdown.so_far], ["Daily spending ahead", fc.breakdown.daily_spending], ["Bills still expected", fc.breakdown.upcoming_bills]];
-  return (<><div className="card fc"><div className="row sp wrap"><b className="ch"><Icon name="trend-up" />Month-end forecast</b><span className="muted small">Day {fc.day} of {dim}</span></div>
-    <div className="fc-grid"><div>
-      <div className="muted small">Projected spend</div><div className="fc-big">{fmt(fc.projected)}</div><div className="muted small">Likely between {fmt(fc.low)} and {fmt(fc.high)}</div>
-      <div className="tags" style={{ marginTop: 10 }}>{fc.vs_last_month_pct !== null && <span className={"tag " + (fc.vs_last_month_pct > 0 ? "p-URGENT" : "met")}>{Math.round(fc.vs_last_month_pct) === 0 ? "In line with last month" : `${fc.vs_last_month_pct > 0 ? "▲" : "▼"} ${Math.abs(Math.round(fc.vs_last_month_pct))}% vs last month`}</span>}
-        {budget > 0 && <span className={"tag " + (diff > 0 ? "p-URGENT" : "met")}>{diff > 0 ? `${fmt(diff)} over budget` : `${fmt(-diff)} under budget`}</span>}</div>
-      <div className="fc-rows">{rows.map(([l, v]) => <div key={l}><span className="muted">{l}</span><b>{fmt(v)}</b></div>)}</div></div>
-      <svg viewBox="0 0 600 210" width="100%" className="fc-chart"><line x1="40" y1="180" x2="580" y2="180" stroke="var(--bd)" />
-        {budget > 0 && <><line x1="40" x2="580" y1={Y(budget)} y2={Y(budget)} stroke="var(--danger)" strokeDasharray="4 4" opacity=".7" /><text x="46" y={Y(budget) - 5} textAnchor="start" fontSize="10" fill="var(--danger)">Budget {fmt(budget)}</text></>}
-        <polygon points={band} fill="var(--ac)" opacity=".14" /><polygon points={`${X(1)},180 ${act} ${X(fc.day)},180`} fill="var(--ac)" opacity=".12" />
-        <polyline className="line" points={act} fill="none" stroke="var(--ac)" strokeWidth="2.5" /><polyline points={proj} fill="none" stroke="var(--ac)" strokeWidth="2" strokeDasharray="5 5" />
-        <line x1={X(fc.day)} x2={X(fc.day)} y1="20" y2="180" stroke="var(--mu)" strokeDasharray="2 3" opacity=".6" /><circle cx={X(fc.day)} cy={Y(fc.spent)} r="4" fill="var(--ac)" />
-        {[1, 8, 15, 22, dim].map((d) => <text key={d} x={X(d)} y="198" textAnchor="middle" fontSize="10" fill="var(--mu)">{d}</text>)}</svg></div></div>
-    <div className="charts"><div className="card"><b className="ch"><Icon name="zap" />Unusual spending</b>
-      {anomalies.length === 0 && <p className="muted small" style={{ marginTop: 10 }}>Nothing unusual in the last 90 days. Your spending is consistent.</p>}
-      {anomalies.map((a) => <div className="act" key={a.id}><div className="grow"><b>{a.title}</b><div className="muted small">{cap(a.category)} · {a.date}</div></div><div style={{ textAlign: "right" }}><b>{fmt(a.amount)}</b><div className="muted small">{a.ratio}× usual ({fmt(a.usual)})</div></div></div>)}</div>
-      <div className="card"><b className="ch"><Icon name="list" />How these are calculated</b>
-        <p className="muted small" style={{ marginTop: 10, lineHeight: 1.6 }}><b>Forecast:</b> spent so far + your typical daily spending (outliers removed) × days left + bills you usually pay later in the month, based on your last 3 months. The shaded band is an 80% range.</p>
-        <p className="muted small" style={{ marginTop: 8, lineHeight: 1.6 }}><b>Unusual:</b> a transaction at least 2× your median for that category and a robust z-score above 3.5 (median and MAD, so one big purchase does not hide the next).</p></div></div></>);
 }

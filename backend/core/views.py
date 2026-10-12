@@ -19,7 +19,6 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.token_blacklist.models import OutstandingToken, BlacklistedToken
 from .models import Habit, HabitLog, Expense, Todo, Goal, Split, Budget, Recurring, Journal, Account, Activity, Profile
 from .serializers import *
-from . import ml
 from .templates_data import TEMPLATES
 
 class AuthAnon(AnonRateThrottle): scope = "auth"
@@ -82,30 +81,6 @@ class HabitViewSet(Own):
 class ExpenseViewSet(Own):
     queryset = Expense.objects.all(); serializer_class = ExpenseSerializer
     def after_create(self, o): log(o.user, "MONEY", f"{'Earned' if o.type == 'INCOME' else 'Spent'} {o.amount} - {o.title}")
-    def _history(self, request):
-        rows = Expense.objects.filter(user=request.user).order_by("-id").values_list("title", "category")[:500]
-        return list(rows)[::-1]
-    @action(detail=False, methods=["get"])
-    def suggest(self, request):
-        """Suggest a category for a transaction title (Naive Bayes, see core/ml.py)."""
-        title = (request.query_params.get("title") or "").strip()[:120]
-        return Response(ml.suggest(title, self._history(request)) or {"category": None, "confidence": 0, "alternatives": [], "evidence": []})
-    @action(detail=False, methods=["get"])
-    def model(self, request):
-        rows = self._history(request)
-        return Response({"samples": len(rows), "personalised": len(rows) >= 10, "accuracy": ml.loo_accuracy(rows)})
-    def _expenses(self, request):
-        return list(Expense.objects.filter(user=request.user, type="EXPENSE").order_by("-date").values("id", "title", "category", "amount", "date")[:1000])
-    @action(detail=False, methods=["get"])
-    def insights(self, request):
-        """Month-end spending forecast and unusual-spend detection (see core/ml.py)."""
-        return Response(ml.insights(self._expenses(request)))
-    @action(detail=False, methods=["get"])
-    def check(self, request):
-        """Is this amount unusually high for this category? Used live in the transaction form."""
-        try: amount = float(request.query_params.get("amount", 0))
-        except ValueError: return Response({"error": "Invalid amount"}, status=400)
-        return Response(ml.check_amount(request.query_params.get("category", ""), amount, self._expenses(request)))
     @action(detail=False, methods=["post"])
     def bulk(self, request):
         rows = request.data
